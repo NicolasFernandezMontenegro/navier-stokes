@@ -13,7 +13,7 @@ OPTIMIZATION_CACHE = funroll-loops floop-block fprefetch-loop-arrays floop-inter
 
 
 # Directorio para los resultados
-RESULTS_DIR=results_v2
+RESULTS_DIR=results
 
 #Metricas para perf:
 STATS_PERF=instructions,branches,branch-misses,cycles,page-faults,context-switches
@@ -26,7 +26,7 @@ demo: demo.o $(COMMON_OBJECTS)
 headless: headless.o $(COMMON_OBJECTS)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-run_all: on comb_1 comb_3 fprofile fprofile_comb
+run_all: o0 comb_1 comb_3 fprofile_comb
 
 run_all_clang: on comb_1_clang comb_3_clang  
 	
@@ -37,6 +37,13 @@ on:
 		perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_$(OPT)_headless.txt ./headless > salida.text && \
 		sed -n '2p' salida.text >> $(RESULTS_DIR)/perf_$(OPT)_headless.txt && rm -f salida.text && \
 		echo "Results saved to $(RESULTS_DIR)/perf_$(OPT)_headless.txt"; )
+
+o0:
+	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O0" && \
+	echo "Running perf for -march=native optimization..." && \
+	perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_-O0_headless.txt ./headless > salida.text && \
+	sed -n '2p' salida.text >> $(RESULTS_DIR)/perf_-O0_headless.txt && rm -f salida.text && \
+	echo "Results saved to $(RESULTS_DIR)/perf_-O0_headless.txt"; 
 
 native:
 	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -march=native" && \
