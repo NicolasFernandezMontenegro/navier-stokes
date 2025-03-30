@@ -1,0 +1,23 @@
+# started on Sat Mar 29 19:02:08 2025
+
+
+ Performance counter stats for './headless':
+
+         27.902,79 msec task-clock                       #    1,000 CPUs utilized             
+                98      context-switches                 #    3,512 /sec                      
+                17      cpu-migrations                   #    0,609 /sec                      
+               164      page-faults                      #    5,878 /sec                      
+   114.246.833.119      cycles                           #    4,094 GHz                         (83,33%)
+        51.189.195      stalled-cycles-frontend          #    0,04% frontend cycles idle        (83,33%)
+    92.766.658.980      stalled-cycles-backend           #   81,20% backend cycles idle         (83,34%)
+   318.217.732.012      instructions                     #    2,79  insn per cycle            
+                                                  #    0,29  stalled cycles per insn     (83,33%)
+     5.746.863.684      branches                         #  205,960 M/sec                       (83,34%)
+        35.816.354      branch-misses                    #    0,62% of all branches             (83,34%)
+
+      27,905145296 seconds time elapsed
+
+      27,899340000 seconds user
+       0,003999000 seconds sys
+
+
