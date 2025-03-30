@@ -1,23 +1,20 @@
-# started on Sat Mar 29 20:10:36 2025
+# started on Sun Mar 30 10:39:55 2025
 
 
  Performance counter stats for './headless':
 
-         25.181,80 msec task-clock                       #    1,000 CPUs utilized             
-                94      context-switches                 #    3,733 /sec                      
-                 9      cpu-migrations                   #    0,357 /sec                      
-               163      page-faults                      #    6,473 /sec                      
-   101.524.033.174      cycles                           #    4,032 GHz                         (83,34%)
-       133.762.173      stalled-cycles-frontend          #    0,13% frontend cycles idle        (83,33%)
-    85.520.526.093      stalled-cycles-backend           #   84,24% backend cycles idle         (83,34%)
-    62.788.940.147      instructions                     #    0,62  insn per cycle            
-                                                  #    1,36  stalled cycles per insn     (83,33%)
-     2.414.952.155      branches                         #   95,901 M/sec                       (83,34%)
-        36.870.187      branch-misses                    #    1,53% of all branches             (83,33%)
+    61.430.297.032      instructions                     #    0,62  insn per cycle              (83,33%)
+     2.411.819.266      branches                                                                (83,33%)
+        35.563.516      branch-misses                    #    1,47% of all branches             (83,34%)
+    99.753.483.799      cycles                                                                  (83,33%)
+               163      page-faults                                                           
+                93      context-switches                                                      
+            41.162      rC104                                                                   (83,33%)
+    27.442.289.533      rC108                                                                   (83,34%)
 
-      25,183944826 seconds time elapsed
+      24,365846433 seconds time elapsed
 
-      25,181046000 seconds user
-       0,000999000 seconds sys
+      24,361915000 seconds user
+       0,002999000 seconds sys
 
 
