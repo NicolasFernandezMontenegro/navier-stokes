@@ -1,22 +1,19 @@
-# started on Sun Mar 30 12:30:05 2025
+# started on Sun Mar 30 12:58:22 2025
 
 
  Performance counter stats for './headless':
 
-    62.842.484.947      instructions                     #    0,84  insn per cycle              (62,50%)
-     2.201.163.179      branches                                                                (62,50%)
-        35.720.046      branch-misses                    #    1,62% of all branches             (62,50%)
-    74.614.277.886      cycles                                                                  (62,49%)
-               163      page-faults                                                           
-               136      context-switches                                                      
-       101.935.424      rC104                                                                   (62,49%)
-    21.275.967.116      rC108                                                                   (62,50%)
-       824.290.201      rC124                                                                   (62,51%)
-                 0      rC128                                                                   (62,51%)
+    62.802.722.254      instructions                     #    0,85  insn per cycle            
+     2.190.846.932      branches                                                              
+        34.238.285      branch-misses                    #    1,56% of all branches           
+    74.052.535.083      cycles                                                                
+               164      page-faults                                                           
+               139      context-switches                                                      
 
-      18,721216398 seconds time elapsed
+      18,439703805 seconds time elapsed
 
-      18,703656000 seconds user
-       0,012998000 seconds sys
+      18,422388000 seconds user
+       0,012999000 seconds sys
 
 
+576.378174, 0.409546, 467.015564, 108.953064: ns per cell total, react, vel_step, dens_step

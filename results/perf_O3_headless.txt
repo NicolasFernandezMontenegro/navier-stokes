@@ -1,24 +1,19 @@
-# started on Sun Mar 30 12:36:35 2025
+# started on Sun Mar 30 13:08:09 2025
 
 
  Performance counter stats for './headless':
 
-    68.063.894.104      instructions                     #    0,67  insn per cycle              (49,99%)
-     4.164.287.627      branches                                                                (50,00%)
-        36.118.043      branch-misses                    #    0,87% of all branches             (50,00%)
-   101.374.259.674      cycles                                                                  (50,01%)
+    68.058.130.854      instructions                     #    0,67  insn per cycle            
+     4.154.306.123      branches                                                              
+        34.861.010      branch-misses                    #    0,84% of all branches           
+   101.881.683.177      cycles                                                                
                163      page-faults                                                           
-               479      context-switches                                                      
-       779.705.500      rC104                                                                   (50,01%)
-    25.899.786.233      rC108                                                                   (50,01%)
-       109.424.696      rC124                                                                   (50,00%)
-                 0      rC128                                                                   (50,00%)
-                 0      rC110                                                                   (49,99%)
-            67.551      rC120                                                                   (49,99%)
+               536      context-switches                                                      
 
-      25,517287694 seconds time elapsed
+      25,424991035 seconds time elapsed
 
-      25,489938000 seconds user
-       0,009998000 seconds sys
+      25,389811000 seconds user
+       0,010999000 seconds sys
 
 
+751.637146, 0.850830, 601.544922, 149.241394: ns per cell total, react, vel_step, dens_step

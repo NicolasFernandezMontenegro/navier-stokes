@@ -1,24 +1,19 @@
-# started on Sun Mar 30 12:36:09 2025
+# started on Sun Mar 30 13:07:44 2025
 
 
  Performance counter stats for './headless':
 
-    68.844.852.251      instructions                     #    0,67  insn per cycle              (49,99%)
-     4.328.692.342      branches                                                                (50,00%)
-        38.563.903      branch-misses                    #    0,89% of all branches             (50,01%)
-   102.774.392.604      cycles                                                                  (50,00%)
-               162      page-faults                                                           
-               181      context-switches                                                      
-       775.941.279      rC104                                                                   (50,01%)
-    25.599.825.763      rC108                                                                   (50,01%)
-       161.490.828      rC124                                                                   (50,00%)
-                 0      rC128                                                                   (49,99%)
-                 0      rC110                                                                   (50,00%)
-            85.790      rC120                                                                   (49,99%)
+    68.867.090.350      instructions                     #    0,68  insn per cycle            
+     4.311.036.407      branches                                                              
+        35.125.314      branch-misses                    #    0,81% of all branches           
+   101.216.333.656      cycles                                                                
+               163      page-faults                                                           
+               188      context-switches                                                      
 
-      25,897178950 seconds time elapsed
+      25,085894062 seconds time elapsed
 
-      25,860402000 seconds user
-       0,030999000 seconds sys
+      25,076279000 seconds user
+       0,003999000 seconds sys
 
 
+760.523865, 0.855713, 607.057617, 152.610535: ns per cell total, react, vel_step, dens_step

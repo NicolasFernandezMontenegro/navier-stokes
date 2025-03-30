@@ -33,56 +33,58 @@ on:
 	$(foreach OPT, $(OPTIMIZATION_LEVELS), \
 		$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS=-$(OPT) && \
 		echo "Running perf for -$(OPT) optimization..." && \
-		perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_$(OPT)_headless.txt ./headless && \
+		perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_$(OPT)_headless.txt ./headless > salida.text && \
+		head -n 1 salida.text >> $(RESULTS_DIR)/perf_$(OPT)_headless.txt && rm -f salida.text && \
 		echo "Results saved to $(RESULTS_DIR)/perf_$(OPT)_headless.txt"; )
 
 native:
 	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -march=native" && \
 	echo "Running perf for -march=native optimization..." && \
-	perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_native_headless.txt ./headless && \
+	perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_native_headless.txt ./headless > salida.text && \
+	head -n 1 salida.text >> $(RESULTS_DIR)/perf_native_headless.txt && rm -f salida.text && \
 	echo "Results saved to $(RESULTS_DIR)/perf_native_headless.txt"; 
 	
 flto:
 	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -march=native -flto" && \
 	echo "Running perf for -march=native optimization..." && \
-	perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_flto_headless.txt ./headless && \
+	perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_flto_headless.txt ./headless > salida.text && \
+	head -n 1 salida.text >> $(RESULTS_DIR)/perf_flto_headless.txt && rm -f salida.text && \
 	echo "Results saved to $(RESULTS_DIR)/perf_flto_headless.txt"; 
 
 ffast-math:
 	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -march=native -ffast-math" && \
 	echo "Running perf for -march=native optimization..." && \
-	perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_ffast_headless.txt ./headless && \
+	perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_ffast_headless.txt ./headless > salida.text && \
+	head -n 1 salida.text >> $(RESULTS_DIR)/perf_ffast_headless.txt && rm -f salida.text && \
 	echo "Results saved to $(RESULTS_DIR)/perf_ffast_headless.txt"; 
 	
 cache-aware: 
 	$(foreach OPT, $(OPTIMIZATION_CACHE), \
 		$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -march=native -$(OPT)" && \
 		echo "Running perf for -$(OPT) optimization..." && \
-		perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_$(OPT)_headless.txt ./headless && \
+		perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_$(OPT)_headless.txt ./headless > salida.text && \
+		head -n 1 salida.text >> $(RESULTS_DIR)/perf_$(OPT)_headless.txt && rm -f salida.text && \
 		echo "Results saved to $(RESULTS_DIR)/perf_$(OPT)_headless.txt"; )
-	
-hugepage:
-	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -march=native -falign-functions=32 -falign-jumps=32 -falign-loops=32 -D USE_HUGEPAGES" && \
-	echo "Running perf for -march=native optimization..." && \
-	LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libhugetlbfs.so HUGETLB_MORECORE=yes HUGETLB_FORCE=yes perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_huge_headless.txt ./headless && \
-	echo "Results saved to $(RESULTS_DIR)/perf_huge_headless.txt"; 
 	
 comb_1:
 	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O2 -march=native -flto -funroll-loops -fprefetch-loop-arrays" && \
 	echo "Running perf for -march=native optimization..." && \
-	perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_comb_1_headless.txt ./headless && \
+	perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_comb_1_headless.txt ./headless > salida.text && \
+	head -n 1 salida.text >> $(RESULTS_DIR)/perf_comb_1_headless.txt && rm -f salida.text && \
 	echo "Results saved to $(RESULTS_DIR)/perf_comb_1_headless.txt"; 
 	
 comb_2:
 	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -march=native -ffast-math -flto -funroll-loops -floop-block -fprefetch-loop-arrays" && \
 	echo "Running perf for -march=native optimization..." && \
-	perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_comb_2_headless.txt ./headless && \
+	perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_comb_2_headless.txt ./headless > salida.text && \
+	head -n 1 salida.text >> $(RESULTS_DIR)/perf_comb_2_headless.txt && rm -f salida.text && \	
 	echo "Results saved to $(RESULTS_DIR)/perf_comb_2_headless.txt"; 
 
 comb_3:
 	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -march=native -ffast-math -flto -funroll-loops -floop-block -fprefetch-loop-arrays -floop-interchange" && \
 	echo "Running perf for -march=native optimization..." && \
-	perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_comb_3_headless.txt ./headless && \
+	perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_comb_3_headless.txt ./headless > salida.text && \
+	head -n 1 salida.text >> $(RESULTS_DIR)/perf_comb_3_headless.txt && rm -f salida.text && \
 	echo "Results saved to $(RESULTS_DIR)/perf_comb_3_headless.txt"; 
 
 fprofile:
@@ -92,7 +94,8 @@ fprofile:
 	echo "Running first time | Recollecting data"
 	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -g -march=native -fprofile-use" && \
 	echo "Running perf for -march=native optimization..." && \
-	perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_fprofile_headless.txt ./headless && \
+	perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_fprofile_headless.txt ./headless > salida.text && \
+	head -n 1 salida.text >> $(RESULTS_DIR)/perf_fprofile_headless.txt && rm -f salida.text && \
 	echo "Results saved to $(RESULTS_DIR)/perf_fprofile_headless.txt"; 
 
 fprofile_comb:
@@ -102,8 +105,8 @@ fprofile_comb:
 	echo "Running first time | Recollecting data"
 	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -g -march=native -ffast-math -flto -funroll-loops -floop-block -fprefetch-loop-arrays -floop-interchange -fprofile-use" && \
 	echo "Running perf for -march=native optimization..." && \
-	perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_fprofile_comb_headless.txt ./headless && \
-	echo "Results saved to $(RESULTS_DIR)/perf_fprofile_comb_headless.txt"; 
+	perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_fprofile_comb_headless.txt ./headless > salida.text && \
+	head -n 1 salida.text >> $(RESULTS_DIR)/perf_fprofile_comb_headless.txt && rm -f salida.text;
 	
 clean:
 	rm -f $(TARGETS) *.o .depend *~
