@@ -28,7 +28,7 @@ headless: headless.o $(COMMON_OBJECTS)
 
 run_all: o0 comb_1 comb_3 fprofile_comb
 
-run_all_clang: on comb_1_clang comb_3_clang  
+run_all_clang: o0 comb_1_clang comb_3_clang  
 	
 on: 
 	$(foreach OPT, $(OPTIMIZATION_LEVELS), \
