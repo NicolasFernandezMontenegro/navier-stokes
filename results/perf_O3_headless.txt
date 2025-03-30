@@ -1,20 +1,24 @@
-# started on Sun Mar 30 10:29:27 2025
+# started on Sun Mar 30 12:36:35 2025
 
 
  Performance counter stats for './headless':
 
-    67.767.912.585      instructions                     #    0,68  insn per cycle              (83,33%)
-     4.163.620.217      branches                                                                (83,33%)
-        35.414.149      branch-misses                    #    0,85% of all branches             (83,34%)
-    99.927.905.956      cycles                                                                  (83,33%)
-               162      page-faults                                                           
-                54      context-switches                                                      
-       784.586.430      rC104                                                                   (83,33%)
-    26.662.785.169      rC108                                                                   (83,34%)
+    68.063.894.104      instructions                     #    0,67  insn per cycle              (49,99%)
+     4.164.287.627      branches                                                                (50,00%)
+        36.118.043      branch-misses                    #    0,87% of all branches             (50,00%)
+   101.374.259.674      cycles                                                                  (50,01%)
+               163      page-faults                                                           
+               479      context-switches                                                      
+       779.705.500      rC104                                                                   (50,01%)
+    25.899.786.233      rC108                                                                   (50,01%)
+       109.424.696      rC124                                                                   (50,00%)
+                 0      rC128                                                                   (50,00%)
+                 0      rC110                                                                   (49,99%)
+            67.551      rC120                                                                   (49,99%)
 
-      24,516575375 seconds time elapsed
+      25,517287694 seconds time elapsed
 
-      24,513485000 seconds user
-       0,001999000 seconds sys
+      25,489938000 seconds user
+       0,009998000 seconds sys
 
 

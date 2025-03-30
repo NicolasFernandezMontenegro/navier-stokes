@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-std=c11 -Wall -Wextra -Wno-unused-parameter -march=native $(EXTRA_FLAGS)
+CFLAGS=-std=c11 -Wall -Wextra -Wno-unused-parameter $(EXTRA_FLAGS)
 LDFLAGS=
 
 TARGETS=demo headless
@@ -16,7 +16,7 @@ OPTIMIZATION_CACHE = funroll-loops floop-block fprefetch-loop-arrays floop-inter
 RESULTS_DIR=results
 
 #Metricas para perf:
-STATS_PERF=instructions,branches,branch-misses,cycles,page-faults,context-switches,rC104,rC108 
+STATS_PERF=instructions,branches,branch-misses,cycles,page-faults,context-switches
 
 all: $(TARGETS)
 
@@ -26,7 +26,7 @@ demo: demo.o $(COMMON_OBJECTS)
 headless: headless.o $(COMMON_OBJECTS)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-run_all: on native flto ffast-math cache-aware fprofile hugepage
+run_all: on native flto ffast-math cache-aware fprofile fprofile_comb
 	
 	
 on: 
@@ -60,16 +60,6 @@ cache-aware:
 		echo "Running perf for -$(OPT) optimization..." && \
 		perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_$(OPT)_headless.txt ./headless && \
 		echo "Results saved to $(RESULTS_DIR)/perf_$(OPT)_headless.txt"; )
-
-fprofile:
-	rm -f *.gcda
-	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -g -march=native -fprofile-generate" && \
-	./headless > /dev/null && \
-	echo "Running first time | Recollecting data"
-	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -g -march=native -fprofile-use" && \
-	echo "Running perf for -march=native optimization..." && \
-	perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_fprofile_headless.txt ./headless && \
-	echo "Results saved to $(RESULTS_DIR)/perf_fprofile_headless.txt"; 
 	
 hugepage:
 	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -march=native -falign-functions=32 -falign-jumps=32 -falign-loops=32 -D USE_HUGEPAGES" && \
@@ -95,6 +85,25 @@ comb_3:
 	perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_comb_3_headless.txt ./headless && \
 	echo "Results saved to $(RESULTS_DIR)/perf_comb_3_headless.txt"; 
 
+fprofile:
+	rm -f *.gcda
+	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -g -march=native -fprofile-generate" && \
+	./headless > /dev/null && \
+	echo "Running first time | Recollecting data"
+	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -g -march=native -fprofile-use" && \
+	echo "Running perf for -march=native optimization..." && \
+	perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_fprofile_headless.txt ./headless && \
+	echo "Results saved to $(RESULTS_DIR)/perf_fprofile_headless.txt"; 
+
+fprofile_comb:
+	rm -f *.gcda
+	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -g -march=native -ffast-math -flto -funroll-loops -floop-block -fprefetch-loop-arrays -floop-interchange -fprofile-generate" && \
+	./headless > /dev/null && \
+	echo "Running first time | Recollecting data"
+	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -g -march=native -ffast-math -flto -funroll-loops -floop-block -fprefetch-loop-arrays -floop-interchange -fprofile-use" && \
+	echo "Running perf for -march=native optimization..." && \
+	perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_fprofile_comb_headless.txt ./headless && \
+	echo "Results saved to $(RESULTS_DIR)/perf_fprofile_comb_headless.txt"; 
 	
 clean:
 	rm -f $(TARGETS) *.o .depend *~
