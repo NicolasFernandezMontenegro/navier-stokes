@@ -13,7 +13,7 @@ OPTIMIZATION_CACHE = funroll-loops floop-block fprefetch-loop-arrays floop-inter
 
 
 # Directorio para los resultados
-RESULTS_DIR=results_clang
+RESULTS_DIR=results_v2
 
 #Metricas para perf:
 STATS_PERF=instructions,branches,branch-misses,cycles,page-faults,context-switches
