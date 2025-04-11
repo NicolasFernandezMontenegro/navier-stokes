@@ -1,10 +1,9 @@
+#include <math.h>
 #include <stddef.h>
 
 #include "solver.h"
-#include <math.h>
 
-
-#define IX(i, j) ((i) + (n + 2) * (j))
+#define IX(i, j) ((i) * (n + 2) + (j))
 #define SWAP(x0, x)      \
     {                    \
         float* tmp = x0; \
@@ -40,38 +39,21 @@ static void set_bnd(unsigned int n, boundary b, float* x)
 
 static void lin_solve(unsigned int n, boundary b, float* x, const float* x0, float a, float c)
 {
-    const float omega = 1.5f; // Factor de relajación para SOR
-    const float inv_c = 1.0f / c;
-    float max_diff;
-
+    const float delta = 1e-9;
+    float inv_c = 1.0f / c;
     for (unsigned int k = 0; k < 20; k++) {
-        max_diff = 0.0f; // Reiniciar la diferencia máxima
-
+        float max_diff = 0.0f;
         for (unsigned int i = 1; i <= n; i++) {
             for (unsigned int j = 1; j <= n; j++) {
-                unsigned int idx = IX(i, j);
-
-                float old_val = x[idx];
-                float new_val = (x0[idx] + a * (x[IX(i - 1, j)] + x[IX(i + 1, j)] + 
-                                                x[IX(i, j - 1)] + x[IX(i, j + 1)])) * inv_c;
-
-                // Aplicar relajación
-                x[idx] = old_val + omega * (new_val - old_val);
-
-                // Calcular cambio máximo
-                float diff = fabsf(x[idx] - old_val);
-            
-                if (diff > max_diff) {
-                    max_diff = diff;
-                }
+                float old = x[IX(i,j)];
+                x[IX(i, j)] = (x0[IX(i, j)] + a * (x[IX(i - 1, j)] + x[IX(i + 1, j)] + x[IX(i, j - 1)] + x[IX(i, j + 1)])) * inv_c;
+                
+                float diff = fabs(x[IX(i,j)] - old);
+                max_diff = diff > max_diff ? diff : max_diff;
             }
         }
-
-        // Aplicar condiciones de frontera
         set_bnd(n, b, x);
-
-        // Terminar antes si la solución ha convergido
-        if (max_diff < 1e-4f) break;
+        if (max_diff < delta) break;
     }
 }
 
