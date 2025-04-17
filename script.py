@@ -4,15 +4,16 @@ import sys
 import matplotlib.pyplot as plt
 
 # Ruta de la carpeta con los archivos
-carpeta_resultados = sys.argv[1]  # Cambiá por tu path si es diferente
+carpeta = sys.argv[1] 
+salida = f"{sys.argv[2]}.png"
 
 # Diccionario para guardar los resultados
 datos = {}
 
 # Buscar todos los archivos en la carpeta
-for archivo in os.listdir(carpeta_resultados):
+for archivo in os.listdir(carpeta):
     if archivo.endswith(".txt"):
-        ruta = os.path.join(carpeta_resultados, archivo)
+        ruta = os.path.join(carpeta, archivo)
         with open(ruta, "r") as f:
             for linea in f:
                 if "cells per sec" in linea:
@@ -21,7 +22,8 @@ for archivo in os.listdir(carpeta_resultados):
                     if match:
                         valor = match.group(1).replace(".", "").replace(",", ".")
                         try:
-                            datos[archivo] = float(valor)
+                       	    nombre_limpio = archivo.replace("_headless.txt", "")  
+                            datos[nombre_limpio] = float(valor)
                         except ValueError:
                             print(f"No se pudo convertir '{valor}' en {archivo}")
                     break  # ya encontramos lo que necesitábamos
@@ -36,6 +38,6 @@ plt.xticks(rotation=45, ha='right')
 plt.ylabel("Celdas por segundo")
 plt.title("Comparación de rendimiento (cells/sec)")
 plt.tight_layout()
-plt.grid(True, linestyle='--', alpha=0.6)
-plt.savefig(os.path.join("images", "comparacion_cells_per_sec.png"))
+plt.grid(True, linestyle='--', alpha=0.1)
+plt.savefig(os.path.join("images", salida))
 plt.show()

@@ -1,1 +1,1 @@
-Carpeta con resultados multiplicando por inverso de c
+Carpeta con resultados recorrido en diagonales

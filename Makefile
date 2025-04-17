@@ -13,7 +13,7 @@ OPTIMIZATION_CACHE = funroll-loops floop-block fprefetch-loop-arrays floop-inter
 
 
 # Directorio para los resultados
-RESULTS_DIR=results_5
+RESULTS_DIR=results_vec_2
 
 #Metricas para perf:
 STATS_PERF=instructions,branches,branch-misses,cycles,page-faults,context-switches
@@ -90,7 +90,7 @@ comb_1:
 	echo "Results saved to $(RESULTS_DIR)/perf_comb_1_headless.txt"; 
 
 comb_2:
-	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -march=native -ffast-math -flto -funroll-loops -fprefetch-loop-arrays" && \
+	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -march=native -flto -ffast-math -funroll-loops -fprefetch-loop-arrays -ftree-vectorize -fopt-info-vec" && \
 	echo "Running perf for -march=native optimization..." && \
 	perf stat  -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_comb_2_headless.txt ./headless > salida.text && \
 	sed -n '2p' salida.text >> $(RESULTS_DIR)/perf_comb_2_headless.txt && rm -f salida.text && \
@@ -102,7 +102,7 @@ comb_2:
 	echo "Results saved to $(RESULTS_DIR)/perf_comb_2_headless.txt"; 
 	
 comb_3:
-	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -march=native -ffast-math -flto -funroll-loops -floop-block -fprefetch-loop-arrays" && \
+	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -march=native -flto -ffast-math -funroll-loops -floop-block -fprefetch-loop-arrays -ftree-vectorize -fopt-info-vec" && \
 	echo "Running perf for -march=native optimization..." && \
 	perf stat  -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_comb_3_headless.txt ./headless > salida.text && \
 	sed -n '2p' salida.text >> $(RESULTS_DIR)/perf_comb_3_headless.txt && rm -f salida.text && \

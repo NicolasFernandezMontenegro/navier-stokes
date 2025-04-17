@@ -2,8 +2,9 @@
 #include <stddef.h>
 
 #include "solver.h"
+#include "lin_solve_ispc.h"
 
-#define IX(i, j) ((i) + (n + 2) * (j))
+#define IX(i, j) ((i) * (n + 2) + (j))
 #define SWAP(x0, x)      \
     {                    \
         float* tmp = x0; \
@@ -37,18 +38,11 @@ static void set_bnd(unsigned int n, boundary b, float* x)
     x[IX(n + 1, n + 1)] = 0.5f * (x[IX(n, n + 1)] + x[IX(n + 1, n)]);
 }
 
-static void lin_solve(unsigned int n, boundary b, float* x, const float* x0, float a, float c)
-{
-    for (unsigned int k = 0; k < 20; k++) {
-        for (unsigned int i = 1; i <= n; i++) {
-            for (unsigned int j = 1; j <= n; j++) {
-                x[IX(i, j)] = (x0[IX(i, j)] + a * (x[IX(i - 1, j)] + x[IX(i + 1, j)] + x[IX(i, j - 1)] + x[IX(i, j + 1)])) / c;
-                
-            }
-        }
-        set_bnd(n, b, x);
-    }
+static void lin_solve(unsigned int n, boundary b, float* x, const float* x0, float a, float c) {
+    ispc::lin_solve_ispc(n, a, c, x, x0);
+    set_bnd(n, b, x); // llamada desde C, justo después del paso ISPC
 }
+
 
 static void diffuse(unsigned int n, boundary b, float* x, const float* x0, float diff, float dt)
 {
