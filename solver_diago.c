@@ -39,24 +39,18 @@ static void set_bnd(unsigned int n, boundary b, float* x)
 
 static void lin_solve(unsigned int n, boundary b, float* x, const float* x0, float a, float c)
 {
-    const float delta = 1e-9;
     float inv_c = 1.0f / c;
     for (unsigned int k = 0; k < 20; k++) {
-        float max_diff = 0.0f;
         for (unsigned int sum = 2; sum <= 2 * n; sum++) {
             for (unsigned int i = 1; i <= n; i++) {
                 unsigned int j = sum - i;
                 if (j < 1 || j > n) continue;
-                
-                float old = x[IX(i,j)];
+               
                 x[IX(i, j)] = (x0[IX(i, j)] + a * (x[IX(i - 1, j)] + x[IX(i + 1, j)] + x[IX(i, j - 1)] + x[IX(i, j + 1)])) * inv_c;
                 
-                float diff = fabs(x[IX(i,j)] - old);
-                max_diff = diff > max_diff ? diff : max_diff;
             }
         }
         set_bnd(n, b, x);
-        if (max_diff < delta) break;
     }
 }
 
