@@ -2,6 +2,7 @@ import os
 import re
 import sys
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 
 # Ruta de la carpeta con los archivos
 carpeta = sys.argv[1] 
@@ -17,27 +18,39 @@ for archivo in os.listdir(carpeta):
         with open(ruta, "r") as f:
             for linea in f:
                 if "cells per sec" in linea:
-                    # Extrae el número antes de "cells per sec"
                     match = re.search(r"([\d.,]+)\s+cells per sec", linea)
                     if match:
                         valor = match.group(1).replace(".", "").replace(",", ".")
                         try:
-                       	    nombre_limpio = archivo.replace(".txt", "")  
+                            nombre_limpio = archivo.replace(".txt", "")  
                             datos[nombre_limpio] = float(valor)
                         except ValueError:
                             print(f"No se pudo convertir '{valor}' en {archivo}")
-                    break  # ya encontramos lo que necesitábamos
+                    break
 
-# Ordenar los datos por valor descendente (opcional)
-datos = dict(sorted(datos.items(), key=lambda x: x[1], reverse=False))
+# Ordenar datos por valor ascendente (el menor primero)
+datos = dict(sorted(datos.items(), key=lambda x: x[1]))
+
+# Calcular el valor mínimo
+valor_minimo = min(datos.values())
+
+# Calcular los multiplicadores relativos al mínimo
+datos_relativos = {k: round(v / valor_minimo, 2) for k, v in datos.items()}
 
 # Generar gráfico
 plt.figure(figsize=(10, 6))
-plt.bar(datos.keys(), datos.values(), color='skyblue')
+barras = plt.bar(datos_relativos.keys(), datos_relativos.values(), color='royalblue')
 plt.xticks(rotation=45, ha='right')
-plt.ylabel("Celdas por segundo")
-plt.title("Comparación de rendimiento (cells/sec)")
+plt.ylabel("Multiplicador (x)")
+plt.title("Comparación de rendimiento relativo")
+
+# Mostrar los valores arriba de cada barra
+for bar in barras:
+    yval = bar.get_height()
+    plt.text(bar.get_x() + bar.get_width()/2, yval + 0.05, f"x{yval}", ha='center', va='bottom')
+
 plt.tight_layout()
-plt.grid(True, linestyle='--', alpha=0.1)
+plt.grid(False)
 plt.savefig(os.path.join("images", salida))
 plt.show()
+

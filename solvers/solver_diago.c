@@ -15,7 +15,7 @@ typedef enum { NONE = 0,
                VERTICAL = 1,
                HORIZONTAL = 2 } boundary;
 
-static void add_source(unsigned int n, float* x, const float* s, float dt)
+static void add_source(unsigned int n, float* restrict x, const float* restrict s, float dt)
 {
     unsigned int size = (n + 2) * (n + 2);
     for (unsigned int i = 0; i < size; i++) {
@@ -37,12 +37,16 @@ static void set_bnd(unsigned int n, boundary b, float* x)
     x[IX(n + 1, n + 1)] = 0.5f * (x[IX(n, n + 1)] + x[IX(n + 1, n)]);
 }
 
-static void lin_solve(unsigned int n, boundary b, float* x, const float* x0, float a, float c)
+static void lin_solve(unsigned int n, boundary b, float* restrict x, const float* restrict x0, float a, float c)
 {
+    float inv_c = 1.0f / c;
     for (unsigned int k = 0; k < 20; k++) {
-        for (unsigned int i = 1; i <= n; i++) {
-            for (unsigned int j = 1; j <= n; j++) {
-                x[IX(i, j)] = (x0[IX(i, j)] + a * (x[IX(i - 1, j)] + x[IX(i + 1, j)] + x[IX(i, j - 1)] + x[IX(i, j + 1)])) / c;
+        for (unsigned int sum = 2; sum <= 2 * n; sum++) {
+            for (unsigned int i = 1; i <= n; i++) {
+                unsigned int j = sum - i;
+                if (j < 1 || j > n) continue;
+               
+                x[IX(i, j)] = (x0[IX(i, j)] + a * (x[IX(i - 1, j)] + x[IX(i + 1, j)] + x[IX(i, j - 1)] + x[IX(i, j + 1)])) * inv_c;
                 
             }
         }

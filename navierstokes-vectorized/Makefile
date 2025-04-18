@@ -1,10 +1,13 @@
 CC=gcc
-CFLAGS=-std=c11 -Wall -Wextra -Wno-unused-parameter -fopenmp -ftree-vectorize -fopt-info-vec-optimized $(EXTRA_FLAGS)
+CFLAGS=-std=c11 -Wall -Wextra -Wno-unused-parameter -mfma -mavx2 $(FLAGS_GCC) $(EXTRA_FLAGS) 
 LDFLAGS=
+FLAGS_GCC= -fopenmp -ftree-vectorize 
+FLAGS_CLANG = -fopenmp -Rpass=loop-vectorize
+
 
 TARGETS=demo headless
 SOURCES=$(shell echo *.c)
-COMMON_OBJECTS=solver.o wtime.o
+COMMON_OBJECTS=solver.o timing.o
 
 # Definir las optimizaciones
 OPTIMIZATION_LEVELS = O0 O1 O2 O3 Ofast
@@ -13,7 +16,7 @@ OPTIMIZATION_CACHE = funroll-loops floop-block fprefetch-loop-arrays floop-inter
 
 
 # Directorio para los resultados
-RESULTS_DIR=results_vec_1
+RESULTS_DIR=results_vec_instrisc
 
 #Metricas para perf:
 STATS_PERF=instructions,branches,branch-misses,cycles,page-faults,context-switches

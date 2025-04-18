@@ -21,7 +21,7 @@
 
 /* macros */
 
-#define IX(i, j) ((i) + (N + 2) * (j))
+#define IX(i, j) ((i) * (N + 2) + (j))
 
 /* external definitions (from solver.c) */
 
