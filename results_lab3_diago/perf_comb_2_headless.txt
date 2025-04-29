@@ -1,0 +1,21 @@
+# started on Mon Apr 28 22:09:35 2025
+
+
+ Performance counter stats for './headless':
+
+   114,740,209,571      instructions                     #    3.01  insn per cycle            
+     9,783,204,519      branches                                                              
+        90,171,601      branch-misses                    #    0.92% of all branches           
+    38,111,035,956      cycles                                                                
+               163      page-faults                                                           
+               240      context-switches                                                      
+
+      16.618857429 seconds time elapsed
+
+      16.611271000 seconds user
+       0.002999000 seconds sys
+
+
+555.032086, 1.288156, 455.713057, 98.030874: ns per cell total, react, vel_step, dens_step
+
+1801697.640954 cells per sec

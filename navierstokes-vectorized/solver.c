@@ -1,9 +1,12 @@
 #include <stddef.h>
-#include <immintrin.h>
+#include <math.h>
+
 #include "solver.h"
 #include "indices.h"
 
+
 #define IX(x,y) (rb_idx((x),(y),(n+2)))
+#define IX_FLAT(x,y) ((x) + (n+2)*(y))
 #define SWAP(x0,x) {float * tmp=x0;x0=x;x=tmp;}
 
 typedef enum { NONE = 0, VERTICAL = 1, HORIZONTAL = 2 } boundary;
@@ -39,30 +42,17 @@ static void lin_solve_rb_step(grid_color color,
                               const float * restrict neigh,
                               float * restrict same)
 {
-    int shift = color == RED ? 1 : -1;
-    unsigned int start = color == RED ? 0 : 1;
+
     unsigned int width = (n + 2) / 2;
-    float c_inv = 1.0f / c;
 
-    for (unsigned int y = 1; y <= n; ++y, shift = -shift, start = 1 - start) {
-        for (unsigned int x = start; x < width - (1 - start); x += 8) { // Procesar 8 elementos a la vez
-            int index = idx(x, y, width);
-
-            // Cargar datos en registros SIMD
-            __m256 same0_vec = _mm256_loadu_ps(&same0[index]);
-            __m256 neigh_up = _mm256_loadu_ps(&neigh[index - width]);
-            __m256 neigh_mid = _mm256_loadu_ps(&neigh[index]);
-            __m256 neigh_shift = _mm256_loadu_ps(&neigh[index + shift]);
-            __m256 neigh_down = _mm256_loadu_ps(&neigh[index + width]);
-
-            // Calcular nuevos valores
-            __m256 result = _mm256_add_ps(same0_vec, _mm256_mul_ps(_mm256_set1_ps(a),
-                _mm256_add_ps(_mm256_add_ps(neigh_up, neigh_mid),
-                              _mm256_add_ps(neigh_shift, neigh_down))));
-            result = _mm256_mul_ps(result, _mm256_set1_ps(c_inv));
-
-            // Almacenar resultados
-            _mm256_storeu_ps(&same[index], result);
+    for (unsigned int y = 1; y <= n; ++y) {
+        for (unsigned int x = 0; x < n/2; ++x) {
+            int index = idx(x + ((y + 1 + (color == BLACK)) % 2), y, width);
+            int shift = 1 - 2 * ((y + 1 + (color == BLACK)) % 2);
+            same[index] = (same0[index] + a * (neigh[index - width] +
+                                               neigh[index] +
+                                               neigh[index + shift] +
+                                               neigh[index + width])) / c;
         }
     }
 }
@@ -91,6 +81,14 @@ static void diffuse(unsigned int n, boundary b, float * x, const float * x0, flo
     lin_solve(n, b, x, x0, a, 1 + 4 * a);
 }
 
+static inline float min(float a, float b) {
+    return (a < b) ? a : b; 
+}
+
+static inline float max(float a, float b) {
+    return (a < b) ? b : a;
+}
+
 static void advect(unsigned int n, boundary b, float * d, const float * d0, const float * u, const float * v, float dt)
 {
     int i0, i1, j0, j1;
@@ -101,18 +99,15 @@ static void advect(unsigned int n, boundary b, float * d, const float * d0, cons
         for (unsigned int j = 1; j <= n; j++) {
             x = i - dt0 * u[IX(i, j)];
             y = j - dt0 * v[IX(i, j)];
-            if (x < 0.5f) {
-                x = 0.5f;
-            } else if (x > n + 0.5f) {
-                x = n + 0.5f;
-            }
+
+            x = max(x, 0.5f);
+            x = min(x, n + 0.5f);
+
+            y = max(y, 0.5f);
+            y = min(y, n + 0.5f);
+
             i0 = (int) x;
             i1 = i0 + 1;
-            if (y < 0.5f) {
-                y = 0.5f;
-            } else if (y > n + 0.5f) {
-                y = n + 0.5f;
-            }
             j0 = (int) y;
             j1 = j0 + 1;
             s1 = x - i0;

@@ -1,8 +1,8 @@
 CC=gcc
-CFLAGS=-std=c11 -Wall -Wextra -Wno-unused-parameter -mfma -mavx2 $(FLAGS_GCC) $(EXTRA_FLAGS) 
-LDFLAGS=
-FLAGS_GCC= -fopenmp -ftree-vectorize 
-FLAGS_CLANG = -fopenmp -Rpass=loop-vectorize
+CFLAGS=-std=c11 -Wall -Wextra -Wno-unused-parameter -mfma -mavx2 $(FLAGS_CLANG) $(EXTRA_FLAGS) 
+LDFLAGS= -lm
+FLAGS_GCC= -ftree-vectorize -fopt-info-vec -fopt-info-vec-missed
+FLAGS_CLANG = -Rpass=loop-vectorize
 
 
 TARGETS=demo headless
@@ -16,7 +16,7 @@ OPTIMIZATION_CACHE = funroll-loops floop-block fprefetch-loop-arrays floop-inter
 
 
 # Directorio para los resultados
-RESULTS_DIR=results_vec_instrisc
+RESULTS_DIR=results_lab3
 
 #Metricas para perf:
 STATS_PERF=instructions,branches,branch-misses,cycles,page-faults,context-switches
