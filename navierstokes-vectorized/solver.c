@@ -121,26 +121,72 @@ static void advect(unsigned int n, boundary b, float * d, const float * d0, cons
     set_bnd(n, b, d);
 }
 
-static void project(unsigned int n, float *u, float *v, float *p, float *div)
+static void project_rb_step_1(grid_color color,
+                              unsigned int n,
+                              float * restrict u,
+                              float * restrict v,
+                              float * restrict div,
+                              float * restrict p)
 {
-    for (unsigned int i = 1; i <= n; i++) {
-        for (unsigned int j = 1; j <= n; j++) {
-            div[IX(i, j)] = -0.5f * (u[IX(i + 1, j)] - u[IX(i - 1, j)] +
-                                     v[IX(i, j + 1)] - v[IX(i, j - 1)]) / n;
-            p[IX(i, j)] = 0;
+    unsigned int width = (n + 2) / 2;
+    for (unsigned int y = 1; y <= n; ++y) {
+        for (unsigned int x = 0; x < n/2; ++x) {
+            int parity = ((y + 1 + (color == BLACK)) % 2);
+            int index = idx(x + parity, y, width);
+            int shift = 1 - 2 * parity;
+
+            //float dudx = (parity == 1) ? (u[index] - u[index + shift]) : u[index + shift] - u[index] ;
+            float dudx = shift * (u[index + shift] - u[index]) ;
+            float dvdy = v[index + width] - v[index - width];
+
+            div[index] = -0.5 * (dudx + dvdy) / n;
+            p[index] = 0;
         }
     }
+}
+
+static void project_rb_step_2(grid_color color,
+                              unsigned int n,
+                              float * restrict p,
+                              float * restrict u,
+                              float * restrict v)
+{
+    unsigned int width = (n + 2) / 2;
+    for (unsigned int y = 1; y <= n; ++y) {
+        for (unsigned int x = 0; x < n/2; ++x) {
+            int parity = ((y + 1 + (color == BLACK)) % 2);
+            int index = idx(x + parity, y, width);
+            int shift = 1 - 2 * parity;
+
+            u[index] -= 0.5 * n * (shift * (p[index + shift] - p[index]));
+            v[index] -= 0.5 * n * (p[index + width] - p[index - width]);
+        }
+    }
+}
+
+static void project(unsigned int n, float * restrict u, float *  restrict v, float * restrict p, float * restrict div)
+{   
+    unsigned int color_size = (n + 2) * ((n + 2) / 2);
+    float * red_u = u;
+    float * blk_u = u + color_size;
+    float * red_v = v;
+    float * blk_v = v + color_size;
+    float * red_p = p;
+    float * blk_p = p + color_size;
+    float * red_div = div;
+    float * blk_div = div + color_size;
+
+    project_rb_step_1(RED, n, blk_u, blk_v, red_div, red_p);
+    project_rb_step_1(BLACK, n, red_u, red_v, blk_div, blk_p);
+
     set_bnd(n, NONE, div);
     set_bnd(n, NONE, p);
 
     lin_solve(n, NONE, p, div, 1, 4);
 
-    for (unsigned int i = 1; i <= n; i++) {
-        for (unsigned int j = 1; j <= n; j++) {
-            u[IX(i, j)] -= 0.5f * n * (p[IX(i + 1, j)] - p[IX(i - 1, j)]);
-            v[IX(i, j)] -= 0.5f * n * (p[IX(i, j + 1)] - p[IX(i, j - 1)]);
-        }
-    }
+    project_rb_step_2(RED, n, blk_p, red_u, red_v);
+    project_rb_step_2(BLACK, n, red_p, blk_u, blk_v);
+    
     set_bnd(n, VERTICAL, u);
     set_bnd(n, HORIZONTAL, v);
 }

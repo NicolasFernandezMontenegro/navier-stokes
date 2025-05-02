@@ -37,33 +37,18 @@ static void set_bnd(unsigned int n, boundary b, float* x)
     x[IX(n + 1, n + 1)] = 0.5f * (x[IX(n, n + 1)] + x[IX(n + 1, n)]);
 }
 
-static void lin_solve(unsigned int n, boundary b, float* restrict x, const float* restrict x0, float a, float c){
+static void lin_solve(unsigned int n, boundary b, float* x, const float* x0, float a, float c)
+{
     for (unsigned int k = 0; k < 20; k++) {
-        // Actualizar celdas rojas
         for (unsigned int i = 1; i <= n; i++) {
-            unsigned int jStart = (i % 2 == 0) ? 1 : 2; // en filas pares empieza en 1, en impares en 2
-            for (unsigned int j = jStart; j <= n; j += 2) {
-                x[IX(i, j)] = (x0[IX(i, j)] +
-                              a * (x[IX(i-1, j)] + x[IX(i+1, j)] +
-                                   x[IX(i, j-1)] + x[IX(i, j+1)])) / c;
+            for (unsigned int j = 1; j <= n; j++) {
+                x[IX(i, j)] = (x0[IX(i, j)] + a * (x[IX(i - 1, j)] + x[IX(i + 1, j)] + x[IX(i, j - 1)] + x[IX(i, j + 1)])) / c;
+                
             }
         }
-
-        // Actualizar celdas negras
-        for (unsigned int i = 1; i <= n; i++) {
-            unsigned int jStart = (i % 2 == 1) ? 1 : 2; // en filas impares empieza en 1, en pares en 2
-            for (unsigned int j = jStart; j <= n; j += 2) {
-                x[IX(i, j)] = (x0[IX(i, j)] +
-                              a * (x[IX(i-1, j)] + x[IX(i+1, j)] +
-                                   x[IX(i, j-1)] + x[IX(i, j+1)])) / c;
-            }
-        }
-
         set_bnd(n, b, x);
     }
 }
-
-
 
 static void diffuse(unsigned int n, boundary b, float* x, const float* x0, float diff, float dt)
 {
@@ -71,15 +56,7 @@ static void diffuse(unsigned int n, boundary b, float* x, const float* x0, float
     lin_solve(n, b, x, x0, a, 1 + 4 * a);
 }
 
-static inline float min(float a, float b) {
-    return (a < b) ? a : b; 
-}
-
-static inline float max(float a, float b) {
-    return (a < b) ? b : a;
-}
-
-static void advect(unsigned int n, boundary b, float * restrict d, const float * restrict d0, const float * restrict u, const float * restrict v, float dt)
+static void advect(unsigned int n, boundary b, float* d, const float* d0, const float* u, const float* v, float dt)
 {
     int i0, i1, j0, j1;
     float x, y, s0, t0, s1, t1;
@@ -89,23 +66,25 @@ static void advect(unsigned int n, boundary b, float * restrict d, const float *
         for (unsigned int j = 1; j <= n; j++) {
             x = i - dt0 * u[IX(i, j)];
             y = j - dt0 * v[IX(i, j)];
-
-            x = max(x, 0.5f);
-            x = min(x, n + 0.5f);
-
-            y = max(y, 0.5f);
-            y = min(y, n + 0.5f);
-
-            i0 = (int) x;
+            if (x < 0.5f) {
+                x = 0.5f;
+            } else if (x > n + 0.5f) {
+                x = n + 0.5f;
+            }
+            i0 = (int)x;
             i1 = i0 + 1;
-            j0 = (int) y;
+            if (y < 0.5f) {
+                y = 0.5f;
+            } else if (y > n + 0.5f) {
+                y = n + 0.5f;
+            }
+            j0 = (int)y;
             j1 = j0 + 1;
             s1 = x - i0;
             s0 = 1 - s1;
             t1 = y - j0;
             t0 = 1 - t1;
-            d[IX(i, j)] = s0 * (t0 * d0[IX(i0, j0)] + t1 * d0[IX(i0, j1)]) +
-                          s1 * (t0 * d0[IX(i1, j0)] + t1 * d0[IX(i1, j1)]);
+            d[IX(i, j)] = s0 * (t0 * d0[IX(i0, j0)] + t1 * d0[IX(i0, j1)]) + s1 * (t0 * d0[IX(i1, j0)] + t1 * d0[IX(i1, j1)]);
         }
     }
     set_bnd(n, b, d);

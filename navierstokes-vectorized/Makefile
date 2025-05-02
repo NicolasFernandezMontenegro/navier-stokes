@@ -1,9 +1,9 @@
 CC=gcc
-CFLAGS=-std=c11 -Wall -Wextra -Wno-unused-parameter -mfma -mavx2 $(FLAGS_CLANG) $(EXTRA_FLAGS) 
-LDFLAGS= -lm
+CFLAGS=-std=c11 -Wall -Wextra -Wno-unused-parameter $(FLAGS_CLANG) $(EXTRA_FLAGS) 
+LDFLAGS= 
 FLAGS_GCC= -ftree-vectorize -fopt-info-vec -fopt-info-vec-missed
-FLAGS_CLANG = -Rpass=loop-vectorize
-
+FLAGS_CLANG = -Rpass=loop-vectorize -Rpass-missed=loop-vectorize
+FLAGS_INTRINSICS = -mfma -mavx2 
 
 TARGETS=demo headless
 SOURCES=$(shell echo *.c)
@@ -147,6 +147,20 @@ comb_3_clang:
 		printf "\n%.6f cells per sec\n", 1e9/ns \
 	}' $(RESULTS_DIR)/clag_perf_comb_3_headless.txt >> $(RESULTS_DIR)/clag_perf_comb_3_headless.txt  && \
 	echo "Results saved to $(RESULTS_DIR)/clag_perf_comb_3_headless.txt"; 
+
+final_clang:
+	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -march=native -ffast-math -funroll-loops" && \
+	echo "Running perf for -march=native optimization..." && \
+	perf stat  -e $(STATS_PERF) -o $(RESULTS_DIR)/final_clang.txt ./headless > salida.text && \
+	sed -n '2p' salida.text >> $(RESULTS_DIR)/final_clang.txt && rm -f salida.text && \
+		awk '/ns per cell total/ { \
+		split($$0, a, ","); \
+		ns=a[1]; \
+		printf "\n%.6f cells per sec\n", 1e9/ns \
+	}' $(RESULTS_DIR)/final_clang.txt >> $(RESULTS_DIR)/final_clang.txt  && \
+	echo "Results saved to $(RESULTS_DIR)/final_clang.txt"; 
+
+
 
 fprofile:
 	rm -f *.gcda
