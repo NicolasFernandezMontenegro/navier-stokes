@@ -4,8 +4,9 @@
 #include "solver.h"
 #include "indices.h"
 
-#define SIZE_BLOCK 64
+
 #define IX(x,y) (rb_idx((x),(y),(n+2)))
+#define IX_FLAT(x,y) ((x) + (n+2)*(y))
 #define SWAP(x0,x) {float * tmp=x0;x0=x;x=tmp;}
 
 typedef enum { NONE = 0, VERTICAL = 1, HORIZONTAL = 2 } boundary;
@@ -43,26 +44,19 @@ static void lin_solve_rb_step(grid_color color,
 {
 
     unsigned int width = (n + 2) / 2;
-    #pragma omp parallel    
-    {
-        #pragma omp for collapse(2) schedule(static) nowait
-        for (unsigned int by = 1; by <= n ; by += SIZE_BLOCK){ 
-            for (unsigned int bx = 0; bx < n/2 ; bx += SIZE_BLOCK){ 
-                for (unsigned int y = by; y < by + SIZE_BLOCK && y <= n; ++y) {
-                    for (unsigned int x = bx; x < bx + SIZE_BLOCK && x < n/2; ++x) {
-                        int index = idx(x + ((y + 1 + (color == BLACK)) % 2), y, width);
-                        int shift = 1 - 2 * ((y + 1 + (color == BLACK)) % 2);
-                        same[index] = (same0[index] + a * (neigh[index - width] +
-                                                           neigh[index] +
-                                                           neigh[index + shift] +
-                                                           neigh[index + width])) / c;
-                    }
-                }
-            }
+    
+    for (unsigned int y = 1; y <= n; ++y) {
+        for (unsigned int x = 0; x < n/2; ++x) {
+            int index = idx(x + ((y + 1 + (color == BLACK)) % 2), y, width);
+            int shift = 1 - 2 * ((y + 1 + (color == BLACK)) % 2);
+            same[index] = (same0[index] + a * (neigh[index - width] +
+                                               neigh[index] +
+                                               neigh[index + shift] +
+                                               neigh[index + width])) / c;
         }
-        #pragma omp barrier
     }
 }
+
 static void lin_solve(unsigned int n, boundary b,
                       float * restrict x,
                       const float * restrict x0,

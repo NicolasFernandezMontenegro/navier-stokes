@@ -3,8 +3,9 @@
 
 #include "solver.h"
 #include "indices.h"
+#include "omp.h"
 
-#define SIZE_BLOCK 64
+#define SIZE_BLOCK 32 
 #define IX(x,y) (rb_idx((x),(y),(n+2)))
 #define SWAP(x0,x) {float * tmp=x0;x0=x;x=tmp;}
 
@@ -43,26 +44,33 @@ static void lin_solve_rb_step(grid_color color,
 {
 
     unsigned int width = (n + 2) / 2;
+    unsigned int nbx = (n / 2) / SIZE_BLOCK;
+    unsigned int nby = n / SIZE_BLOCK;
+    unsigned int num_blocks = nbx * nby;
+    omp_set_num_threads(num_blocks);
+
     #pragma omp parallel    
     {
-        #pragma omp for collapse(2) schedule(static) nowait
-        for (unsigned int by = 1; by <= n ; by += SIZE_BLOCK){ 
-            for (unsigned int bx = 0; bx < n/2 ; bx += SIZE_BLOCK){ 
-                for (unsigned int y = by; y < by + SIZE_BLOCK && y <= n; ++y) {
-                    for (unsigned int x = bx; x < bx + SIZE_BLOCK && x < n/2; ++x) {
-                        int index = idx(x + ((y + 1 + (color == BLACK)) % 2), y, width);
-                        int shift = 1 - 2 * ((y + 1 + (color == BLACK)) % 2);
-                        same[index] = (same0[index] + a * (neigh[index - width] +
-                                                           neigh[index] +
-                                                           neigh[index + shift] +
-                                                           neigh[index + width])) / c;
-                    }
+        #pragma omp for schedule(static) nowait
+        for (unsigned int b = 0; b < num_blocks; ++b) {
+            unsigned int by = 1 + (b / nbx) * SIZE_BLOCK;
+            unsigned int bx = (b % nbx) * SIZE_BLOCK;
+
+            for (unsigned int y = by; y < by + SIZE_BLOCK && y <= n; ++y) {
+                for (unsigned int x = bx; x < bx + SIZE_BLOCK && x < n/2; ++x) {
+                    int index = idx(x + ((y + 1 + (color == BLACK)) % 2), y, width);
+                    int shift = 1 - 2 * ((y + 1 + (color == BLACK)) % 2);
+                    same[index] = (same0[index] + a * (neigh[index - width] +
+                                                        neigh[index] +
+                                                        neigh[index + shift] +
+                                                        neigh[index + width])) / c;
                 }
             }
         }
-        #pragma omp barrier
     }
+    #pragma omp barrier
 }
+
 static void lin_solve(unsigned int n, boundary b,
                       float * restrict x,
                       const float * restrict x0,
