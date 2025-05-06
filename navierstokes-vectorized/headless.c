@@ -172,7 +172,7 @@ int main ( int argc, char ** argv )
 	}
 
 	if ( argc == 1 ) {
-		N = 256;
+		N = 1024;
 		dt = 0.1f;
 		diff = 0.0f;
 		visc = 0.0f;

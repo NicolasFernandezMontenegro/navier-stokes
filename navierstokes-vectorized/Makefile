@@ -1,6 +1,6 @@
 CC=gcc
-CFLAGS=-std=c11 -Wall -Wextra -Wno-unused-parameter -fopenmp $(FLAGS_CLANG) $(EXTRA_FLAGS) 
-LDFLAGS= -lomp
+CFLAGS=-std=c11 -Wall -Wextra -Wno-unused-parameter $(FLAGS_CLANG) $(EXTRA_FLAGS) 
+LDFLAGS=
 FLAGS_GCC= -ftree-vectorize -fopt-info-vec -fopt-info-vec-missed
 FLAGS_CLANG = -Rpass=loop-vectorize -Rpass-missed=loop-vectorize
 FLAGS_INTRINSICS = -mfma -mavx2 
@@ -11,14 +11,14 @@ COMMON_OBJECTS=solver.o timing.o
 
 # Definir las optimizaciones
 OPTIMIZATION_LEVELS = O0 O1 O2 O3 Ofast
-BLOCKS_SIZE = 64 32 
-THREADS = 2 4
+BLOCKS_SIZE = 64
+THREADS = 4 8
 
 OPTIMIZATION_CACHE = funroll-loops floop-block fprefetch-loop-arrays floop-interchange floop-strip-mine
 
 
 # Directorio para los resultados
-RESULTS_DIR=results_blocks
+RESULTS_DIR=results_blocks_1024
 
 #Metricas para perf:
 STATS_PERF=instructions,branches,branch-misses,cycles,page-faults,context-switches
@@ -172,9 +172,9 @@ blocking:
 		for T in $(THREADS); do \
 			make clean && \
 			make headless EXTRA_FLAGS="-DSIZE_BLOCK=$$SIZE -O3 -march=native -ffast-math -funroll-loops" && \
-			OMP_NUM_THREADS=$$T OMP_PROC_BIND=spread OMP_PLACES=threads \
 			echo "Running perf for SIZE_BLOCK=$$SIZE with $$T threads..." && \
-			perf stat -r 4 -e task-clock -o $(RESULTS_DIR)/blocking_block_$$SIZE-thread_$$T.txt ./headless > salida.text && \
+			OMP_NUM_THREADS=$$T OMP_PROC_BIND=spread OMP_PLACES=threads \
+			perf stat -e task-clock -o $(RESULTS_DIR)/blocking_block_$$SIZE-thread_$$T.txt ./headless > salida.text && \
 			sed -n '2p' salida.text >> $(RESULTS_DIR)/blocking_block_$$SIZE-thread_$$T.txt && rm -f salida.text && \
 			awk '/ns per cell total/ { \
 				split($$0, a, ","); \

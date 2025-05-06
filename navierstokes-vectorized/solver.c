@@ -45,7 +45,7 @@ static void lin_solve_rb_step(grid_color color,
     unsigned int width = (n + 2) / 2;
     #pragma omp parallel    
     {
-        #pragma omp for collapse(2) schedule(static) nowait
+        #pragma omp for collapse(2) schedule(static)
         for (unsigned int by = 1; by <= n ; by += SIZE_BLOCK){ 
             for (unsigned int bx = 0; bx < n/2 ; bx += SIZE_BLOCK){ 
                 for (unsigned int y = by; y < by + SIZE_BLOCK && y <= n; ++y) {
@@ -60,7 +60,6 @@ static void lin_solve_rb_step(grid_color color,
                 }
             }
         }
-        #pragma omp barrier
     }
 }
 static void lin_solve(unsigned int n, boundary b,

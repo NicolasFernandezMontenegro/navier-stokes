@@ -1,0 +1,13 @@
+# started on Mon May  5 21:03:39 2025
+
+
+ Performance counter stats for './headless':
+
+         11.489,59 msec task-clock                       #    1,000 CPUs utilized             
+
+      11,491293075 seconds time elapsed
+
+      11,482439000 seconds user
+       0,007999000 seconds sys
+
+

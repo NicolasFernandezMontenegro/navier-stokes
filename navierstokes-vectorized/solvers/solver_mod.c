@@ -3,9 +3,8 @@
 
 #include "solver.h"
 #include "indices.h"
-#include "omp.h"
 
-#define SIZE_BLOCK 32 
+//#define SIZE_BLOCK 32 
 #define IX(x,y) (rb_idx((x),(y),(n+2)))
 #define SWAP(x0,x) {float * tmp=x0;x0=x;x=tmp;}
 
@@ -47,11 +46,10 @@ static void lin_solve_rb_step(grid_color color,
     unsigned int nbx = (n / 2) / SIZE_BLOCK;
     unsigned int nby = n / SIZE_BLOCK;
     unsigned int num_blocks = nbx * nby;
-    omp_set_num_threads(num_blocks);
 
     #pragma omp parallel    
     {
-        #pragma omp for schedule(static) nowait
+        #pragma omp for schedule(static) 
         for (unsigned int b = 0; b < num_blocks; ++b) {
             unsigned int by = 1 + (b / nbx) * SIZE_BLOCK;
             unsigned int bx = (b % nbx) * SIZE_BLOCK;
@@ -68,7 +66,7 @@ static void lin_solve_rb_step(grid_color color,
             }
         }
     }
-    #pragma omp barrier
+
 }
 
 static void lin_solve(unsigned int n, boundary b,
