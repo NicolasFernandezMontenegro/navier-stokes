@@ -4,6 +4,7 @@
 #include "indices.h"
 #include "solver.h"
 
+//#define SIZE_BLOCK 1
 #define IX(x, y) (rb_idx((x), (y), (n + 2)))
 #define IX_FLAT(x, y) ((x) + (n + 2) * (y))
 #define SWAP(x0, x)      \
@@ -41,6 +42,29 @@ static void set_bnd(unsigned int n, boundary b, float* x)
     x[IX(n + 1, n + 1)] = 0.5f * (x[IX(n, n + 1)] + x[IX(n + 1, n)]);
 }
 
+static void lin_solve_submatrix(grid_color color,
+                              unsigned int start_y,
+                              unsigned int end_y,
+                              unsigned int start_x,
+                              unsigned int end_x,
+                              unsigned int width,
+                              float a,
+                              float c,
+                              const float* restrict same0,
+                              const float* restrict neigh,
+                              float* restrict same)
+{   
+    
+    for (unsigned int y = start_y; y <= end_y; ++y) {
+        int parity = ((y + 1 + (color == BLACK)) % 2);
+        for (unsigned int x = start_x; x < end_x; ++x) {
+            int index = idx(x + parity, y, width);
+            int shift = 1 - 2 * parity;
+            same[index] = (same0[index] + a * (neigh[index - width] + neigh[index] + neigh[index + shift] + neigh[index + width])) / c;
+        }
+    }
+}
+
 static void lin_solve_rb_step(grid_color color,
                               unsigned int n,
                               float a,
@@ -48,15 +72,15 @@ static void lin_solve_rb_step(grid_color color,
                               const float* restrict same0,
                               const float* restrict neigh,
                               float* restrict same)
-{
-
+{   
     unsigned int width = (n + 2) / 2;
-
-    for (unsigned int y = 1; y <= n; ++y) {
-        for (unsigned int x = 0; x < n / 2; ++x) {
-            int index = idx(x + ((y + 1 + (color == BLACK)) % 2), y, width);
-            int shift = 1 - 2 * ((y + 1 + (color == BLACK)) % 2);
-            same[index] = (same0[index] + a * (neigh[index - width] + neigh[index] + neigh[index + shift] + neigh[index + width])) / c;
+    #pragma omp parallel    
+    {
+        #pragma omp for collapse(2) schedule(static)
+        for (unsigned int y = 1; y <= n; y += SIZE_BLOCK) {
+            for (unsigned int x = 0; x < n / 2; x += SIZE_BLOCK) {
+                lin_solve_submatrix(color, y, y+SIZE_BLOCK, x, x+SIZE_BLOCK, width, a, c, same0, neigh, same);
+            }
         }
     }
 }
@@ -99,7 +123,7 @@ static void advect_rb(grid_color color,
         unsigned int width = (n + 2) / 2;
         float dt0 = dt * n;
         for (unsigned int j = 1; j <= n; j++) {
-            unsigned int is_odd = (color)? 1 - (j % 2) : (j % 2);
+            unsigned int is_odd = (color == BLACK) ? 1 - (j % 2) : (j % 2);
             for (unsigned int  i= 1; i <= n/2; i++) { 
                 int index = idx(i - is_odd, j, width);
                 x = (2 * i - is_odd) - dt0 * u[index];
@@ -156,8 +180,8 @@ static void project_rb_step_1(grid_color color,
     {
         unsigned int width = (n + 2) / 2;
         for (unsigned int y = 1; y <= n; ++y) {
+            int parity = ((y + 1 + (color == BLACK)) % 2);
             for (unsigned int x = 0; x < n / 2; ++x) {
-                int parity = ((y + 1 + (color == BLACK)) % 2);
                 int index = idx(x + parity, y, width);
                 int shift = 1 - 2 * parity;
 
@@ -179,8 +203,8 @@ static void project_rb_step_2(grid_color color,
     {
         unsigned int width = (n + 2) / 2;
         for (unsigned int y = 1; y <= n; ++y) {
+            int parity = ((y + 1 + (color == BLACK)) % 2);
             for (unsigned int x = 0; x < n / 2; ++x) {
-                int parity = ((y + 1 + (color == BLACK)) % 2);
                 int index = idx(x + parity, y, width);
                 int shift = 1 - 2 * parity;
 

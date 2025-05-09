@@ -86,45 +86,66 @@ static void diffuse(unsigned int n, boundary b, float * x, const float * x0, flo
     lin_solve(n, b, x, x0, a, 1 + 4 * a);
 }
 
-static inline float min(float a, float b) {
-    return (a < b) ? a : b; 
-}
-
-static inline float max(float a, float b) {
-    return (a < b) ? b : a;
-}
-
-static void advect(unsigned int n, boundary b, float * d, const float * d0, const float * u, const float * v, float dt)
-{
-    int i0, i1, j0, j1;
-    float x, y, s0, t0, s1, t1;
-
-    float dt0 = dt * n;
-    for (unsigned int i = 1; i <= n; i++) {
+static void advect_rb(grid_color color,
+                          unsigned int n,
+                          float* restrict d,
+                          const float* restrict d0,
+                          const float* restrict u,
+                          const float* restrict v,
+                          float dt)
+    {
+        int i0, i1, j0, j1;
+        float x, y, s0, t0, s1, t1;
+        unsigned int width = (n + 2) / 2;
+        float dt0 = dt * n;
         for (unsigned int j = 1; j <= n; j++) {
-            x = i - dt0 * u[IX(i, j)];
-            y = j - dt0 * v[IX(i, j)];
+            unsigned int is_odd = (color)? 1 - (j % 2) : (j % 2);
+            for (unsigned int  i= 1; i <= n/2; i++) { 
+                int index = idx(i - is_odd, j, width);
+                x = (2 * i - is_odd) - dt0 * u[index];
+                y = j - dt0 * v[index];
 
-            x = max(x, 0.5f);
-            x = min(x, n + 0.5f);
+                x = fmaxf(x, 0.5f);
+                x = fminf(x, n + 0.5f);
+                y = fmaxf(y, 0.5f);
+                y = fminf(y, n + 0.5f);
 
-            y = max(y, 0.5f);
-            y = min(y, n + 0.5f);
+                i0 = (int)x;
+                i1 = i0 + 1;
+                j0 = (int)y;
+                j1 = j0 + 1;
+                s1 = x - i0;
+                s0 = 1 - s1;
+                t1 = y - j0;
+                t0 = 1 - t1;
 
-            i0 = (int) x;
-            i1 = i0 + 1;
-            j0 = (int) y;
-            j1 = j0 + 1;
-            s1 = x - i0;
-            s0 = 1 - s1;
-            t1 = y - j0;
-            t0 = 1 - t1;
-            d[IX(i, j)] = s0 * (t0 * d0[IX(i0, j0)] + t1 * d0[IX(i0, j1)]) +
-                          s1 * (t0 * d0[IX(i1, j0)] + t1 * d0[IX(i1, j1)]);
+                d[index] = s0 * (t0 * d0[IX(i0, j0)] + t1 * d0[IX(i0, j1)]) +
+                        s1 * (t0 * d0[IX(i1, j0)] + t1 * d0[IX(i1, j1)]);
+           
+            }
         }
     }
-    set_bnd(n, b, d);
-}
+
+static void advect(unsigned int n, boundary b,
+                       float* restrict d,
+                       const float* restrict d0,
+                       const float* restrict u,
+                       const float* restrict v,
+                       float dt)
+    {
+        unsigned int color_size = (n + 2) * ((n + 2) / 2);
+        float* restrict d_Red = d;
+        float* restrict d_Blk = d + color_size;
+        const float* restrict u_Red = u;
+        const float* restrict u_Blk = u + color_size;
+        const float* restrict v_Red = v;
+        const float* restrict v_Blk = v + color_size;
+
+        advect_rb(RED, n, d_Red, d0, u_Red, v_Red, dt);
+        advect_rb(BLACK, n, d_Blk, d0, u_Blk, v_Blk, dt);
+        
+        set_bnd(n, b, d);
+    }
 
 static void project_rb_step_1(grid_color color,
                               unsigned int n,

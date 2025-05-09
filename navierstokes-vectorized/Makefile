@@ -1,6 +1,6 @@
 CC=gcc
-CFLAGS=-std=c11 -Wall -Wextra -Wno-unused-parameter $(FLAGS_CLANG) $(EXTRA_FLAGS) 
-LDFLAGS=
+CFLAGS=-std=c11 -Wall -Wextra -Wno-unused-parameter -fopenmp $(FLAGS_CLANG) $(EXTRA_FLAGS) 
+LDFLAGS= -lomp
 FLAGS_GCC= -ftree-vectorize -fopt-info-vec -fopt-info-vec-missed
 FLAGS_CLANG = -Rpass=loop-vectorize -Rpass-missed=loop-vectorize
 FLAGS_INTRINSICS = -mfma -mavx2 
@@ -11,14 +11,14 @@ COMMON_OBJECTS=solver.o timing.o
 
 # Definir las optimizaciones
 OPTIMIZATION_LEVELS = O0 O1 O2 O3 Ofast
-BLOCKS_SIZE = 64
+BLOCKS_SIZE = 16 32 64
 THREADS = 4 8
 
 OPTIMIZATION_CACHE = funroll-loops floop-block fprefetch-loop-arrays floop-interchange floop-strip-mine
 
 
 # Directorio para los resultados
-RESULTS_DIR=results_blocks_1024
+RESULTS_DIR=results_blocks_512
 
 #Metricas para perf:
 STATS_PERF=instructions,branches,branch-misses,cycles,page-faults,context-switches
