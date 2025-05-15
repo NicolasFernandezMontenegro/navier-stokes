@@ -1,11 +1,10 @@
 #include <math.h>
 #include <stddef.h>
 
-#include <omp.h>
 #include "indices.h"
 #include "solver.h"
 
-//#define SIZE_BLOCK 16
+#define SIZE_BLOCK 16
 #define IX(x, y) (rb_idx((x), (y), (n + 2)))
 #define IX_FLAT(x, y) ((x) + (n + 2) * (y))
 #define SWAP(x0, x)      \
@@ -43,7 +42,7 @@ static void set_bnd(unsigned int n, boundary b, float* x)
     x[IX(n + 1, n + 1)] = 0.5f * (x[IX(n, n + 1)] + x[IX(n + 1, n)]);
 }
 
-static void lin_solve_submatrix(grid_color color,
+static void lin_solve_rb_step(grid_color color,
                               unsigned int start_y,
                               unsigned int start_x,
                               unsigned int width,
@@ -53,34 +52,12 @@ static void lin_solve_submatrix(grid_color color,
                               const float* restrict neigh,
                               float* restrict same)
 {   
-    
     for (unsigned int y = start_y; y <= start_y+SIZE_BLOCK; ++y) {
         int parity = ((y + 1 + (color == BLACK)) % 2);
-        #pragma omp simd
         for (unsigned int x = start_x; x < start_x+SIZE_BLOCK; ++x) {
             int index = idx(x + parity, y, width);
             int shift = 1 - 2 * parity;
             same[index] = (same0[index] + a * (neigh[index - width] + neigh[index] + neigh[index + shift] + neigh[index + width])) / c;
-        }
-    }
-}
-
-static void lin_solve_rb_step(grid_color color,
-                              unsigned int n,
-                              float a,
-                              float c,
-                              const float* restrict same0,
-                              const float* restrict neigh,
-                              float* restrict same)
-{   
-    unsigned int width = (n + 2) / 2;
-    #pragma omp parallel shared(width) num_threads(4)
-    {
-        #pragma omp for collapse(2) 
-        for (unsigned int y = 1; y <= n; y += SIZE_BLOCK) {
-            for (unsigned int x = 0; x < n / 2; x += SIZE_BLOCK) {
-                lin_solve_submatrix(color, y, x, width, a, c, same0, neigh, same);
-            }
         }
     }
 }
@@ -96,20 +73,19 @@ static void lin_solve(unsigned int n, boundary b,
     float* red = x;
     float* blk = x + color_size;
 
-    omp_set_max_active_levels(2);
+    unsigned int width = (n + 2) / 2;
     for (unsigned int k = 0; k < 20; ++k) {
-        #pragma omp parallel num_threads(2)
+        #pragma omp parallel shared(width)
         {
-            #pragma omp single nowait
-            {
-                #pragma omp task
-                lin_solve_rb_step(RED, n, a, c, red0, blk, red);
-
-                #pragma omp task
-                lin_solve_rb_step(BLACK, n, a, c, blk0, red, blk);
+        #pragma omp for collapse(2) schedule(static)
+        for (unsigned int by = 1; by <= n; by += SIZE_BLOCK) {
+            for (unsigned int bx = 0; bx < n / 2; bx += SIZE_BLOCK) {
+                lin_solve_rb_step(RED, by, bx, width, a, c, red0, blk, red);
+                lin_solve_rb_step(BLACK, by, bx, width, a, c, blk0, red, blk);
             }
-        } 
+        }
         set_bnd(n, b, x);
+        }
     }
 }
 

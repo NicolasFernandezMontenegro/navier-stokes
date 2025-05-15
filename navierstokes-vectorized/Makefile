@@ -11,14 +11,14 @@ COMMON_OBJECTS=solver.o timing.o
 
 # Definir las optimizaciones
 OPTIMIZATION_LEVELS = O0 O1 O2 O3 Ofast
-BLOCKS_SIZE = 16 32 64
-THREADS = 4 8
+BLOCKS_SIZE = 8 16 32 64
+THREADS = 8
 
 OPTIMIZATION_CACHE = funroll-loops floop-block fprefetch-loop-arrays floop-interchange floop-strip-mine
 
 
 # Directorio para los resultados
-RESULTS_DIR=results_blocks_512
+RESULTS_DIR=results_blocks
 
 #Metricas para perf:
 STATS_PERF=instructions,branches,branch-misses,cycles,page-faults,context-switches
@@ -158,14 +158,14 @@ final_clang_th:
 	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -march=native -ffast-math -funroll-loops" && \
 	echo "Running perf for -march=native optimization..." && \
 	OMP_NUM_THREADS=2 OMP_PROC_BIND=spread OMP_PLACES=threads \
-	perf stat -e task-clock -o $(RESULTS_DIR)/final_clang_256.txt ./headless > salida.text && \
-	sed -n '2p' salida.text >> $(RESULTS_DIR)/final_clang_256.txt && rm -f salida.text && \
+	perf stat -e task-clock -o $(RESULTS_DIR)/final_clang_th.txt ./headless > salida.text && \
+	sed -n '2p' salida.text >> $(RESULTS_DIR)/final_clang_th.txt && rm -f salida.text && \
 		awk '/ns per cell total/ { \
 		split($$0, a, ","); \
 		ns=a[1]; \
 		printf "\n%.6f cells per sec\n", 1e9/ns \
-	}' $(RESULTS_DIR)/final_clang_256.txt >> $(RESULTS_DIR)/final_clang_256.txt  && \
-	echo "Results saved to $(RESULTS_DIR)/final_clang_256.txt";
+	}' $(RESULTS_DIR)/final_clang_th.txt >> $(RESULTS_DIR)/final_clang_th.txt  && \
+	echo "Results saved to $(RESULTS_DIR)/final_clang_th.txt";
 
 blocking:
 	@for SIZE in $(BLOCKS_SIZE); do \

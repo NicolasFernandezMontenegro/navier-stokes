@@ -43,8 +43,6 @@ static void set_bnd(unsigned int n, boundary b, float* x)
 }
 
 static void lin_solve_submatrix(grid_color color,
-                              unsigned int start_y,
-                              unsigned int start_x,
                               unsigned int width,
                               float a,
                               float c,
@@ -53,9 +51,9 @@ static void lin_solve_submatrix(grid_color color,
                               float* restrict same)
 {   
     
-    for (unsigned int y = start_y; y <= start_y+SIZE_BLOCK; ++y) {
+    for (unsigned int y = 0; y <= SIZE_BLOCK; ++y) {
         int parity = ((y + 1 + (color == BLACK)) % 2);
-        for (unsigned int x = start_x; x < start_x+SIZE_BLOCK; ++x) {
+        for (unsigned int x = 0; x < SIZE_BLOCK; ++x) {
             int index = idx(x + parity, y, width);
             int shift = 1 - 2 * parity;
             same[index] = (same0[index] + a * (neigh[index - width] + neigh[index] + neigh[index + shift] + neigh[index + width])) / c;
@@ -72,12 +70,13 @@ static void lin_solve_rb_step(grid_color color,
                               float* restrict same)
 {   
     unsigned int width = (n + 2) / 2;
-    #pragma omp parallel shared(width)
+    #pragma omp parallel shared(width)  
     {
-        #pragma omp for collapse(2) schedule(static)
+        #pragma omp for collapse(2) schedule(static) 
         for (unsigned int y = 1; y <= n; y += SIZE_BLOCK) {
             for (unsigned int x = 0; x < n / 2; x += SIZE_BLOCK) {
-                lin_solve_submatrix(color, y, x, width, a, c, same0, neigh, same);
+                int base_index = idx(x, y, width);
+                lin_solve_submatrix(color, width, a, c, &same0[base_index], &neigh[base_index], &same[base_index]);
             }
         }
     }
