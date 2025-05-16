@@ -1,17 +1,26 @@
-#include <stddef.h>
 #include <math.h>
+#include <stddef.h>
 
-#include "solver.h"
 #include "indices.h"
+#include "solver.h"
 
-#define SIZE_BLOCK 64
-#define IX(x,y) (rb_idx((x),(y),(n+2)))
-#define SWAP(x0,x) {float * tmp=x0;x0=x;x=tmp;}
+#define SIZE_BLOCK 128
+#define IX(x, y) (rb_idx((x), (y), (n + 2)))
+#define IX_FLAT(x, y) ((x) + (n + 2) * (y))
+#define SWAP(x0, x)      \
+    {                    \
+        float* tmp = x0; \
+        x0 = x;          \
+        x = tmp;         \
+    }
 
-typedef enum { NONE = 0, VERTICAL = 1, HORIZONTAL = 2 } boundary;
-typedef enum { RED, BLACK } grid_color;
+typedef enum { NONE = 0,
+               VERTICAL = 1,
+               HORIZONTAL = 2 } boundary;
+typedef enum { RED,
+               BLACK } grid_color;
 
-static void add_source(unsigned int n, float * x, const float * s, float dt)
+static void add_source(unsigned int n, float* x, const float* s, float dt)
 {
     unsigned int size = (n + 2) * (n + 2);
     for (unsigned int i = 0; i < size; i++) {
@@ -19,72 +28,91 @@ static void add_source(unsigned int n, float * x, const float * s, float dt)
     }
 }
 
-static void set_bnd(unsigned int n, boundary b, float * x)
+static void set_bnd(unsigned int n, boundary b, float* x)
 {
     for (unsigned int i = 1; i <= n; i++) {
-        x[IX(0, i)]     = b == VERTICAL ? -x[IX(1, i)] : x[IX(1, i)];
+        x[IX(0, i)] = b == VERTICAL ? -x[IX(1, i)] : x[IX(1, i)];
         x[IX(n + 1, i)] = b == VERTICAL ? -x[IX(n, i)] : x[IX(n, i)];
-        x[IX(i, 0)]     = b == HORIZONTAL ? -x[IX(i, 1)] : x[IX(i, 1)];
+        x[IX(i, 0)] = b == HORIZONTAL ? -x[IX(i, 1)] : x[IX(i, 1)];
         x[IX(i, n + 1)] = b == HORIZONTAL ? -x[IX(i, n)] : x[IX(i, n)];
     }
-    x[IX(0, 0)]         = 0.5f * (x[IX(1, 0)]     + x[IX(0, 1)]);
-    x[IX(0, n + 1)]     = 0.5f * (x[IX(1, n + 1)] + x[IX(0, n)]);
-    x[IX(n + 1, 0)]     = 0.5f * (x[IX(n, 0)]     + x[IX(n + 1, 1)]);
+    x[IX(0, 0)] = 0.5f * (x[IX(1, 0)] + x[IX(0, 1)]);
+    x[IX(0, n + 1)] = 0.5f * (x[IX(1, n + 1)] + x[IX(0, n)]);
+    x[IX(n + 1, 0)] = 0.5f * (x[IX(n, 0)] + x[IX(n + 1, 1)]);
     x[IX(n + 1, n + 1)] = 0.5f * (x[IX(n, n + 1)] + x[IX(n + 1, n)]);
+}
+
+static void lin_solve_submatrix(grid_color color,
+                              unsigned int start_y,
+                              unsigned int start_x,
+                              unsigned int n,
+                              unsigned int width,
+                              float a,
+                              float c,
+                              const float* restrict same0,
+                              const float* restrict neigh,
+                              float* restrict same)
+{   
+    
+    unsigned int ymax = (start_y + SIZE_BLOCK <= n) ? start_y + SIZE_BLOCK : n;
+    unsigned int xmax = (start_x + SIZE_BLOCK <= n/2) ? start_x + SIZE_BLOCK : n/2;
+
+    for (unsigned int y = start_y; y <= ymax; ++y) {
+        int parity = ((y + 1 + (color == BLACK)) % 2);
+        for (unsigned int x = start_x; x < xmax; ++x) {
+            int index = idx(x + parity, y, width);
+            int shift = 1 - 2 * parity;
+            same[index] = (same0[index] + a * (neigh[index - width] + neigh[index] + neigh[index + shift] + neigh[index + width])) / c;
+        }
+    }
 }
 
 static void lin_solve_rb_step(grid_color color,
                               unsigned int n,
                               float a,
                               float c,
-                              const float * restrict same0,
-                              const float * restrict neigh,
-                              float * restrict same)
-{
-
+                              const float* restrict same0,
+                              const float* restrict neigh,
+                              float* restrict same)
+{   
     unsigned int width = (n + 2) / 2;
-    #pragma omp parallel    
+    #pragma omp for
     {
-        #pragma omp for collapse(2) schedule(static)
-        for (unsigned int by = 1; by <= n ; by += SIZE_BLOCK){ 
-            for (unsigned int bx = 0; bx < n/2 ; bx += SIZE_BLOCK){ 
-                for (unsigned int y = by; y < by + SIZE_BLOCK && y <= n; ++y) {
-                    for (unsigned int x = bx; x < bx + SIZE_BLOCK && x < n/2; ++x) {
-                        int index = idx(x + ((y + 1 + (color == BLACK)) % 2), y, width);
-                        int shift = 1 - 2 * ((y + 1 + (color == BLACK)) % 2);
-                        same[index] = (same0[index] + a * (neigh[index - width] +
-                                                           neigh[index] +
-                                                           neigh[index + shift] +
-                                                           neigh[index + width])) / c;
-                    }
-                }
+        for (unsigned int y = 1; y <= n; y += SIZE_BLOCK) {
+            for (unsigned int x = 0; x < n / 2; x += SIZE_BLOCK) {
+                lin_solve_submatrix(color, y, x, n, width, a, c, same0, neigh, same);
             }
         }
     }
 }
+
 static void lin_solve(unsigned int n, boundary b,
-                      float * restrict x,
-                      const float * restrict x0,
+                      float* restrict x,
+                      const float* restrict x0,
                       float a, float c)
 {
     unsigned int color_size = (n + 2) * ((n + 2) / 2);
-    const float * red0 = x0;
-    const float * blk0 = x0 + color_size;
-    float * red = x;
-    float * blk = x + color_size;
-    
+    const float* red0 = x0;
+    const float* blk0 = x0 + color_size;
+    float* red = x;
+    float* blk = x + color_size;
+
     for (unsigned int k = 0; k < 20; ++k) {
-        lin_solve_rb_step(RED,   n, a, c, red0, blk, red);
-        lin_solve_rb_step(BLACK, n, a, c, blk0, red, blk);
+        #pragma omp parallel
+        {
+            lin_solve_rb_step(RED, n, a, c, red0, blk, red);
+            lin_solve_rb_step(BLACK, n, a, c, blk0, red, blk);
+        }
         set_bnd(n, b, x);
     }
 }
 
-static void diffuse(unsigned int n, boundary b, float * x, const float * x0, float diff, float dt)
+static void diffuse(unsigned int n, boundary b, float* x, const float* x0, float diff, float dt)
 {
     float a = dt * diff * n * n;
     lin_solve(n, b, x, x0, a, 1 + 4 * a);
 }
+
 
 static void advect_rb(grid_color color,
                           unsigned int n,
@@ -99,7 +127,7 @@ static void advect_rb(grid_color color,
         unsigned int width = (n + 2) / 2;
         float dt0 = dt * n;
         for (unsigned int j = 1; j <= n; j++) {
-            unsigned int is_odd = (color)? 1 - (j % 2) : (j % 2);
+            unsigned int is_odd = (color == BLACK) ? 1 - (j % 2) : (j % 2);
             for (unsigned int  i= 1; i <= n/2; i++) { 
                 int index = idx(i - is_odd, j, width);
                 x = (2 * i - is_odd) - dt0 * u[index];
@@ -148,96 +176,96 @@ static void advect(unsigned int n, boundary b,
     }
 
 static void project_rb_step_1(grid_color color,
-                              unsigned int n,
-                              float * restrict u,
-                              float * restrict v,
-                              float * restrict div,
-                              float * restrict p)
-{
-    unsigned int width = (n + 2) / 2;
-    for (unsigned int y = 1; y <= n; ++y) {
-        for (unsigned int x = 0; x < n/2; ++x) {
+                                  unsigned int n,
+                                  float* restrict u,
+                                  float* restrict v,
+                                  float* restrict div,
+                                  float* restrict p)
+    {
+        unsigned int width = (n + 2) / 2;
+        for (unsigned int y = 1; y <= n; ++y) {
             int parity = ((y + 1 + (color == BLACK)) % 2);
-            int index = idx(x + parity, y, width);
-            int shift = 1 - 2 * parity;
+            for (unsigned int x = 0; x < n / 2; ++x) {
+                int index = idx(x + parity, y, width);
+                int shift = 1 - 2 * parity;
 
-            //float dudx = (parity == 1) ? (u[index] - u[index + shift]) : u[index + shift] - u[index] ;
-            float dudx = shift * (u[index + shift] - u[index]) ;
-            float dvdy = v[index + width] - v[index - width];
+                // float dudx = (parity == 1) ? (u[index] - u[index + shift]) : u[index + shift] - u[index] ;
+                float dudx = shift * (u[index + shift] - u[index]);
+                float dvdy = v[index + width] - v[index - width];
 
-            div[index] = -0.5 * (dudx + dvdy) / n;
-            p[index] = 0;
+                div[index] = -0.5 * (dudx + dvdy) / n;
+                p[index] = 0;
+            }
         }
     }
-}
 
 static void project_rb_step_2(grid_color color,
-                              unsigned int n,
-                              float * restrict p,
-                              float * restrict u,
-                              float * restrict v)
-{
-    unsigned int width = (n + 2) / 2;
-    for (unsigned int y = 1; y <= n; ++y) {
-        for (unsigned int x = 0; x < n/2; ++x) {
+                                  unsigned int n,
+                                  float* restrict p,
+                                  float* restrict u,
+                                  float* restrict v)
+    {
+        unsigned int width = (n + 2) / 2;
+        for (unsigned int y = 1; y <= n; ++y) {
             int parity = ((y + 1 + (color == BLACK)) % 2);
-            int index = idx(x + parity, y, width);
-            int shift = 1 - 2 * parity;
+            for (unsigned int x = 0; x < n / 2; ++x) {
+                int index = idx(x + parity, y, width);
+                int shift = 1 - 2 * parity;
 
-            u[index] -= 0.5 * n * (shift * (p[index + shift] - p[index]));
-            v[index] -= 0.5 * n * (p[index + width] - p[index - width]);
+                u[index] -= 0.5 * n * (shift * (p[index + shift] - p[index]));
+                v[index] -= 0.5 * n * (p[index + width] - p[index - width]);
+            }
         }
     }
-}
 
-static void project(unsigned int n, float * restrict u, float *  restrict v, float * restrict p, float * restrict div)
-{   
-    unsigned int color_size = (n + 2) * ((n + 2) / 2);
-    float * red_u = u;
-    float * blk_u = u + color_size;
-    float * red_v = v;
-    float * blk_v = v + color_size;
-    float * red_p = p;
-    float * blk_p = p + color_size;
-    float * red_div = div;
-    float * blk_div = div + color_size;
+    static void project(unsigned int n, float* restrict u, float* restrict v, float* restrict p, float* restrict div)
+    {
+        unsigned int color_size = (n + 2) * ((n + 2) / 2);
+        float* red_u = u;
+        float* blk_u = u + color_size;
+        float* red_v = v;
+        float* blk_v = v + color_size;
+        float* red_p = p;
+        float* blk_p = p + color_size;
+        float* red_div = div;
+        float* blk_div = div + color_size;
 
-    project_rb_step_1(RED, n, blk_u, blk_v, red_div, red_p);
-    project_rb_step_1(BLACK, n, red_u, red_v, blk_div, blk_p);
+        project_rb_step_1(RED, n, blk_u, blk_v, red_div, red_p);
+        project_rb_step_1(BLACK, n, red_u, red_v, blk_div, blk_p);
 
-    set_bnd(n, NONE, div);
-    set_bnd(n, NONE, p);
+        set_bnd(n, NONE, div);
+        set_bnd(n, NONE, p);
 
-    lin_solve(n, NONE, p, div, 1, 4);
+        lin_solve(n, NONE, p, div, 1, 4);
 
-    project_rb_step_2(RED, n, blk_p, red_u, red_v);
-    project_rb_step_2(BLACK, n, red_p, blk_u, blk_v);
-    
-    set_bnd(n, VERTICAL, u);
-    set_bnd(n, HORIZONTAL, v);
-}
+        project_rb_step_2(RED, n, blk_p, red_u, red_v);
+        project_rb_step_2(BLACK, n, red_p, blk_u, blk_v);
 
-void dens_step(unsigned int n, float *x, float *x0, float *u, float *v, float diff, float dt)
-{
-    add_source(n, x, x0, dt);
-    SWAP(x0, x);
-    diffuse(n, NONE, x, x0, diff, dt);
-    SWAP(x0, x);
-    advect(n, NONE, x, x0, u, v, dt);
-}
+        set_bnd(n, VERTICAL, u);
+        set_bnd(n, HORIZONTAL, v);
+    }
 
-void vel_step(unsigned int n, float *u, float *v, float *u0, float *v0, float visc, float dt)
-{
-    add_source(n, u, u0, dt);
-    add_source(n, v, v0, dt);
-    SWAP(u0, u);
-    diffuse(n, VERTICAL, u, u0, visc, dt);
-    SWAP(v0, v);
-    diffuse(n, HORIZONTAL, v, v0, visc, dt);
-    project(n, u, v, u0, v0);
-    SWAP(u0, u);
-    SWAP(v0, v);
-    advect(n, VERTICAL, u, u0, u0, v0, dt);
-    advect(n, HORIZONTAL, v, v0, u0, v0, dt);
-    project(n, u, v, u0, v0);
-}
+    void dens_step(unsigned int n, float* x, float* x0, float* u, float* v, float diff, float dt)
+    {
+        add_source(n, x, x0, dt);
+        SWAP(x0, x);
+        diffuse(n, NONE, x, x0, diff, dt);
+        SWAP(x0, x);
+        advect(n, NONE, x, x0, u, v, dt);
+    }
+
+    void vel_step(unsigned int n, float* u, float* v, float* u0, float* v0, float visc, float dt)
+    {
+        add_source(n, u, u0, dt);
+        add_source(n, v, v0, dt);
+        SWAP(u0, u);
+        diffuse(n, VERTICAL, u, u0, visc, dt);
+        SWAP(v0, v);
+        diffuse(n, HORIZONTAL, v, v0, visc, dt);
+        project(n, u, v, u0, v0);
+        SWAP(u0, u);
+        SWAP(v0, v);
+        advect(n, VERTICAL, u, u0, u0, v0, dt);
+        advect(n, HORIZONTAL, v, v0, u0, v0, dt);
+        project(n, u, v, u0, v0);
+    }

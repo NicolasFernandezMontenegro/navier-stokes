@@ -1,10 +1,12 @@
 #include <math.h>
 #include <stddef.h>
+#include <stdio.h>
 
+#include <omp.h>
 #include "indices.h"
 #include "solver.h"
 
-#define SIZE_BLOCK 16
+//#define SIZE_BLOCK 16
 #define IX(x, y) (rb_idx((x), (y), (n + 2)))
 #define IX_FLAT(x, y) ((x) + (n + 2) * (y))
 #define SWAP(x0, x)      \
@@ -43,21 +45,24 @@ static void set_bnd(unsigned int n, boundary b, float* x)
 }
 
 static void lin_solve_rb_step(grid_color color,
-                              unsigned int start_y,
-                              unsigned int start_x,
+                              unsigned int n,
                               unsigned int width,
                               float a,
                               float c,
                               const float* restrict same0,
                               const float* restrict neigh,
                               float* restrict same)
-{   
-    for (unsigned int y = start_y; y <= start_y+SIZE_BLOCK; ++y) {
-        int parity = ((y + 1 + (color == BLACK)) % 2);
-        for (unsigned int x = start_x; x < start_x+SIZE_BLOCK; ++x) {
-            int index = idx(x + parity, y, width);
-            int shift = 1 - 2 * parity;
-            same[index] = (same0[index] + a * (neigh[index - width] + neigh[index] + neigh[index + shift] + neigh[index + width])) / c;
+{
+   
+    #pragma omp for 
+    {
+        for (unsigned int y = 1; y <= n; ++y) {
+            #pragma omp simd 
+            for (unsigned int x = 0; x < n / 2; ++x) {
+                int index = idx(x + ((y + 1 + (color == BLACK)) % 2), y, width);
+                int shift = 1 - 2 * ((y + 1 + (color == BLACK)) % 2);
+                same[index] = (same0[index] + a * (neigh[index - width] + neigh[index] + neigh[index + shift] + neigh[index + width])) / c;
+            }
         }
     }
 }
@@ -72,20 +77,15 @@ static void lin_solve(unsigned int n, boundary b,
     const float* blk0 = x0 + color_size;
     float* red = x;
     float* blk = x + color_size;
-
     unsigned int width = (n + 2) / 2;
-    for (unsigned int k = 0; k < 20; ++k) {
-        #pragma omp parallel shared(width)
+
+    for (unsigned int k = 0; k < 20; ++k) { 
+        #pragma omp parallel 
         {
-        #pragma omp for collapse(2) schedule(static)
-        for (unsigned int by = 1; by <= n; by += SIZE_BLOCK) {
-            for (unsigned int bx = 0; bx < n / 2; bx += SIZE_BLOCK) {
-                lin_solve_rb_step(RED, by, bx, width, a, c, red0, blk, red);
-                lin_solve_rb_step(BLACK, by, bx, width, a, c, blk0, red, blk);
-            }
+            lin_solve_rb_step(RED, n, width, a, c, red0, blk, red);
+            lin_solve_rb_step(BLACK, n, width, a, c, blk0, red, blk);
         }
-        set_bnd(n, b, x);
-        }
+        set_bnd(n, b, x);   
     }
 }
 
