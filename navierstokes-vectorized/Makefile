@@ -11,14 +11,14 @@ COMMON_OBJECTS=solver.o timing.o
 
 # Definir las optimizaciones
 OPTIMIZATION_LEVELS = O0 O1 O2 O3 Ofast
-BLOCKS_SIZE = 16 32 64
-THREADS = 4 
+BLOCKS_SIZE = 32 64 128
+THREADS = 8 
 
 OPTIMIZATION_CACHE = funroll-loops floop-block fprefetch-loop-arrays floop-interchange floop-strip-mine
 
 
 # Directorio para los resultados
-RESULTS_DIR=results_blocks
+RESULTS_DIR=results_finals
 
 #Metricas para perf:
 STATS_PERF=instructions,branches,branch-misses,cycles,page-faults,context-switches
