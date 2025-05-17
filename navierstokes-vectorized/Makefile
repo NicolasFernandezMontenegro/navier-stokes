@@ -1,6 +1,6 @@
 CC=gcc
-CFLAGS=-std=c11 -Wall -Wextra -Wno-unused-parameter -O3 -march=native -ffast-math -funroll-loops -fopenmp $(FLAGS_CLANG) $(EXTRA_FLAGS) 
-LDFLAGS= -lomp
+CFLAGS=-std=c11 -Wall -Wextra -Wno-unused-parameter $(FLAGS_GCC) $(EXTRA_FLAGS) 
+LDFLAGS= 
 FLAGS_GCC= -ftree-vectorize -fopt-info-vec -fopt-info-vec-missed
 FLAGS_CLANG = -Rpass=loop-vectorize -Rpass-missed=loop-vectorize
 FLAGS_INTRINSICS = -mfma -mavx2 
@@ -12,13 +12,14 @@ COMMON_OBJECTS=solver.o timing.o
 # Definir las optimizaciones
 OPTIMIZATION_LEVELS = O0 O1 O2 O3 Ofast
 BLOCKS_SIZE = 32 64 128
+N_SIZE = 128 256 512 1024
 THREADS = 8 
 
 OPTIMIZATION_CACHE = funroll-loops floop-block fprefetch-loop-arrays floop-interchange floop-strip-mine
 
 
 # Directorio para los resultados
-RESULTS_DIR=results_finals
+RESULTS_DIR=results_original_rb
 
 #Metricas para perf:
 STATS_PERF=instructions,branches,branch-misses,cycles,page-faults,context-switches
@@ -47,16 +48,18 @@ on:
 		echo "Results saved to $(RESULTS_DIR)/perf_$(OPT)_headless.txt"; )
 
 o0:
-	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O0" && \
-	echo "Running perf for -march=native optimization..." && \
-	perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_-O0_headless.txt ./headless > salida.text && \
-	sed -n '2p' salida.text >> $(RESULTS_DIR)/perf_-O0_headless.txt && rm -f salida.text && \
-		awk '/ns per cell total/ { \
-		split($$0, a, ","); \
-		ns=a[1]; \
-		printf "\n%.6f cells per sec\n", 1e9/ns \
-	}' $(RESULTS_DIR)/perf_-O0_headless.txt >> $(RESULTS_DIR)/perf_-O0_headless.txt && \
-	echo "Results saved to $(RESULTS_DIR)/perf_-O0_headless.txt"; 
+	for N in $(N_SIZE); do \
+		$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O0" && \
+		echo "Running perf for -march=native optimization..." && \
+		perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_-O0_headless.txt ./headless > salida.text && \
+		sed -n '2p' salida.text >> $(RESULTS_DIR)/perf_-O0_headless.txt && rm -f salida.text && \
+			awk '/ns per cell total/ { \
+			split($$0, a, ","); \
+			ns=a[1]; \
+			printf "\n%.6f cells per sec\n", 1e9/ns \
+		}' $(RESULTS_DIR)/perf_-O0_headless.txt >> $(RESULTS_DIR)/perf_-O0_headless.txt && \
+		echo "Results saved to $(RESULTS_DIR)/perf_-O0_headless.txt"; 
+	done \
 
 native:
 	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -march=native" && \
@@ -87,16 +90,19 @@ comb_1:
 	echo "Results saved to $(RESULTS_DIR)/perf_comb_1_headless.txt"; 
 
 comb_2:
-	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -march=native -flto -ffast-math -funroll-loops -fprefetch-loop-arrays -ftree-vectorize -fopt-info-vec" && \
-	echo "Running perf for -march=native optimization..." && \
-	perf stat  -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_comb_2_headless.txt ./headless > salida.text && \
-	sed -n '2p' salida.text >> $(RESULTS_DIR)/perf_comb_2_headless.txt && rm -f salida.text && \
-		awk '/ns per cell total/ { \
-		split($$0, a, ","); \
-		ns=a[1]; \
-		printf "\n%.6f cells per sec\n", 1e9/ns \
-	}' $(RESULTS_DIR)/perf_comb_2_headless.txt >> $(RESULTS_DIR)/perf_comb_2_headless.txt  && \
-	echo "Results saved to $(RESULTS_DIR)/perf_comb_2_headless.txt"; 
+	for N in $(N_SIZE); do \
+		make clean && \
+		make headless EXTRA_FLAGS="-DN_SIZE=$$N -O3 -march=native -flto -ffast-math -funroll-loops -fprefetch-loop-arrays -ftree-vectorize -fopt-info-vec" && \
+		echo "Running perf for -march=native optimization..." && \
+		perf stat  -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_comb_2_$$N.txt ./headless > salida.text && \
+		sed -n '2p' salida.text >> $(RESULTS_DIR)/perf_comb_2_$$N.txt && rm -f salida.text && \
+			awk '/ns per cell total/ { \
+			split($$0, a, ","); \
+			ns=a[1]; \
+			printf "\n%.6f cells per sec\n", 1e6/ns \
+		}' $(RESULTS_DIR)/perf_comb_2_$$N.txt >> $(RESULTS_DIR)/perf_comb_2_$$N.txt  && \
+		echo "Results saved to $(RESULTS_DIR)/perf_comb_2_$$N.txt"; \
+	done \
 	
 comb_3:
 	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -march=native -flto -ffast-math -funroll-loops -floop-block -fprefetch-loop-arrays -ftree-vectorize -fopt-info-vec" && \
@@ -155,16 +161,19 @@ final_clang:
 	echo "Results saved to $(RESULTS_DIR)/final_clang.txt"; 
 
 final_clang_th:
-	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -march=native -ffast-math -funroll-loops" && \
-	echo "Running perf for -march=native optimization..." && \
-	perf stat -e task-clock -o $(RESULTS_DIR)/final_clang_th.txt ./headless > salida.text && \
-	sed -n '2p' salida.text >> $(RESULTS_DIR)/final_clang_th.txt && rm -f salida.text && \
-		awk '/ns per cell total/ { \
-		split($$0, a, ","); \
-		ns=a[1]; \
-		printf "\n%.6f cells per sec\n", 1e9/ns \
-	}' $(RESULTS_DIR)/final_clang_th.txt >> $(RESULTS_DIR)/final_clang_th.txt  && \
-	echo "Results saved to $(RESULTS_DIR)/final_clang_th.txt";
+	for N in $(N_SIZE); do \
+		make clean && \
+		make headless EXTRA_FLAGS="-DN_SIZE=$$N -O3 -march=native -ffast-math -funroll-loops" && \
+		echo "Running perf for -march=native optimization..." && \
+		perf stat -e task-clock -o $(RESULTS_DIR)/final_clang_th.txt ./headless > salida.text && \
+		sed -n '2p' salida.text >> $(RESULTS_DIR)/final_clang_th.txt && rm -f salida.text && \
+			awk '/ns per cell total/ { \
+			split($$0, a, ","); \
+			ns=a[1]; \
+			printf "\n%.6f cells per sec\n", 1e6/ns \
+		}' $(RESULTS_DIR)/final_clang_th.txt >> $(RESULTS_DIR)/final_clang_th.txt  && \
+		echo "Results saved to $(RESULTS_DIR)/final_clang_th.txt"; \
+	done \
 
 threding:
 	for T in $(THREADS); do \

@@ -22,7 +22,7 @@
 #include "timing.h"
 
 /* macros */
-
+//#define N_SIZE 128
 #define IX(x,y) (rb_idx((x),(y),(N+2)))
 
 /* global variables */
@@ -172,7 +172,7 @@ int main ( int argc, char ** argv )
 	}
 
 	if ( argc == 1 ) {
-		N = 512;
+		N = N_SIZE;
 		dt = 0.1f;
 		diff = 0.0f;
 		visc = 0.0f;

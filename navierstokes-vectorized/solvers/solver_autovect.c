@@ -53,10 +53,14 @@ static void lin_solve_rb_step(grid_color color,
     unsigned int width = (n + 2) / 2;
 
     for (unsigned int y = 1; y <= n; ++y) {
+        int parity = ((y + 1 + (color == BLACK)) % 2);
         for (unsigned int x = 0; x < n / 2; ++x) {
-            int index = idx(x + ((y + 1 + (color == BLACK)) % 2), y, width);
-            int shift = 1 - 2 * ((y + 1 + (color == BLACK)) % 2);
-            same[index] = (same0[index] + a * (neigh[index - width] + neigh[index] + neigh[index + shift] + neigh[index + width])) / c;
+            int index = idx(x + parity, y, width);
+            int shift = 1 - 2 * parity;
+            same[index] = (same0[index] + a * (neigh[index - width] 
+                                            + neigh[index] 
+                                            + neigh[index + shift] 
+                                            + neigh[index + width])) / c;
         }
     }
 }

@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-std=c11 -Wall -Wextra -Wno-unused-parameter -mfma -mavx2 $(FLAGS_CLANG) $(EXTRA_FLAGS) 
+CFLAGS=-std=c11 -Wall -Wextra -Wno-unused-parameter $(EXTRA_FLAGS) 
 LDFLAGS= -lm
 FLAGS_GCC= -ftree-vectorize -fopt-info-vec -fopt-info-vec-missed
 FLAGS_CLANG = -Rpass=loop-vectorize
@@ -8,6 +8,7 @@ FLAGS_CLANG = -Rpass=loop-vectorize
 TARGETS=demo headless
 SOURCES=$(shell echo *.c)
 COMMON_OBJECTS=solver.o wtime.o
+N_SIZE = 64 128 256 512 1024
 
 # Definir las optimizaciones
 OPTIMIZATION_LEVELS = O0 O1 O2 O3 Ofast
@@ -16,7 +17,7 @@ OPTIMIZATION_CACHE = funroll-loops floop-block fprefetch-loop-arrays floop-inter
 
 
 # Directorio para los resultados
-RESULTS_DIR=results_lab3_prueba
+RESULTS_DIR=results_original
 
 #Metricas para perf:
 STATS_PERF=instructions,branches,branch-misses,cycles,page-faults,context-switches
@@ -45,16 +46,18 @@ on:
 		echo "Results saved to $(RESULTS_DIR)/perf_$(OPT)_headless.txt"; )
 
 o0:
-	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O0" && \
-	echo "Running perf for -march=native optimization..." && \
-	perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/perf_-O0_headless.txt ./headless > salida.text && \
-	sed -n '2p' salida.text >> $(RESULTS_DIR)/perf_-O0_headless.txt && rm -f salida.text && \
-		awk '/ns per cell total/ { \
-		split($$0, a, ","); \
-		ns=a[1]; \
-		printf "\n%.6f cells per sec\n", 1e9/ns \
-	}' $(RESULTS_DIR)/perf_-O0_headless.txt >> $(RESULTS_DIR)/perf_-O0_headless.txt && \
-	echo "Results saved to $(RESULTS_DIR)/perf_-O0_headless.txt"; 
+	for N in $(N_SIZE); do \
+		$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-DN_SIZE=$$N -O0" && \
+		echo "Running perf for -march=native optimization..." && \
+		perf stat -e $(STATS_PERF) -o $(RESULTS_DIR)/original_$$N.txt ./headless > salida.text && \
+		sed -n '2p' salida.text >> $(RESULTS_DIR)/original_$$N.txt && rm -f salida.text && \
+			awk '/ns per cell total/ { \
+			split($$0, a, ","); \
+			ns=a[1]; \
+			printf "\n%.6f cells per sec\n", 1e9/ns \
+		}' $(RESULTS_DIR)/original_$$N.txt >> $(RESULTS_DIR)/original_$$N.txt && \
+		echo "Results saved to $(RESULTS_DIR)/original_$$N.txt"; \
+	done \
 
 native:
 	$(MAKE) clean && $(MAKE) headless EXTRA_FLAGS="-O3 -march=native" && \
