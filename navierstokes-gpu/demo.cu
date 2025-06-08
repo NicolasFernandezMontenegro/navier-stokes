@@ -14,13 +14,18 @@
   =======================================================================
 */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <GL/glut.h>
+#include <cstdlib>      // en vez de <stdlib.h>
+#include <cstdio>       // en vez de <stdio.h>
+#include <cmath>        // en vez de <math.h>
+#include <GL/glut.h>    // sigue igual, es una lib C pero compatible
 
 #include "indices.h"
 #include "solver.h"
 #include "timing.h"
+
+#include "cuda.h"
+#include "helper_cuda.h"
+
 
 /* macros */
 
@@ -51,12 +56,12 @@ static int omx, omy, mx, my;
 
 static void free_data ( void )
 {
-	if ( u ) free ( u );
-	if ( v ) free ( v );
-	if ( u_prev ) free ( u_prev );
-	if ( v_prev ) free ( v_prev );
-	if ( dens ) free ( dens );
-	if ( dens_prev ) free ( dens_prev );
+	if ( u ) checkCudaCall(cudaFree( u ));
+	if ( v ) checkCudaCall(cudaFree( v ));
+	if ( u_prev ) checkCudaCall(cudaFree( u_prev ));
+	if ( v_prev ) checkCudaCall(cudaFree( v_prev ));
+	if ( dens ) checkCudaCall(cudaFree( dens ));
+	if ( dens_prev ) checkCudaCall(cudaFree( dens_prev ));
 }
 
 static void clear_data ( void )
@@ -72,12 +77,20 @@ static int allocate_data ( void )
 {
 	int size = (N+2)*(N+2);
 
-	u			= (float *) malloc ( size*sizeof(float) );
-	v			= (float *) malloc ( size*sizeof(float) );
-	u_prev		= (float *) malloc ( size*sizeof(float) );
-	v_prev		= (float *) malloc ( size*sizeof(float) );
-	dens		= (float *) malloc ( size*sizeof(float) );	
-	dens_prev	= (float *) malloc ( size*sizeof(float) );
+	size_t array_size = size*sizeof(float);
+	float * u = nullptr;
+	float * v = nullptr;
+	float * u_prev = nullptr;
+	float * v_prev = nullptr;
+	float * dens = nullptr;
+	float * dens_prev = nullptr;
+	
+	checkCudaCall(cudaMallocManaged(&u, array_size));
+	checkCudaCall(cudaMallocManaged(&v, array_size));
+	checkCudaCall(cudaMallocManaged(&u_prev, array_size));
+	checkCudaCall(cudaMallocManaged(&v_prev, array_size));
+	checkCudaCall(cudaMallocManaged(&dens, array_size));
+	checkCudaCall(cudaMallocManaged(&dens_prev, array_size));
 
 	if ( !u || !v || !u_prev || !v_prev || !dens || !dens_prev ) {
 		fprintf ( stderr, "cannot allocate data\n" );

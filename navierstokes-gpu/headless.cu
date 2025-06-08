@@ -14,15 +14,15 @@
   =======================================================================
 */
 
-#include <cmath.h>
-#include <cstdlib.h>
-#include <cstdio.h>
+#include <cmath>
+#include <cstdlib>
+#include <cstdio>
 
 #include "indices.h"
 #include "solver.h"
 #include "timing.h"
 
-#include "cuda-h"
+#include "cuda.h"
 #include "helper_cuda.h"
 
 
@@ -71,19 +71,19 @@ static int allocate_data ( void )
 	int size = (N+2)*(N+2);
 	
 	size_t array_size = size*sizeof(float);
-	float * u = nullptr
-	float * v = nullptr
-	float * u_prev = nullptr
-	float * v_prev = nullptr
-	float * dens = nullptr
-	float * dens_prev = null
+	float * u = nullptr;
+	float * v = nullptr;
+	float * u_prev = nullptr;
+	float * v_prev = nullptr;
+	float * dens = nullptr;
+	float * dens_prev = nullptr;
 	
-	checkCudaCall(cudaMallocManaged(&u, array_size))
-	checkCudaCall(cudaMallocManaged(&v, array_size))
-	checkCudaCall(cudaMallocManaged(&u_prev, array_size))
-	checkCudaCall(cudaMallocManaged(&v_prev, array_size))
-	checkCudaCall(cudaMallocManaged(&dens, array_size))
-	checkCudaCall(cudaMallocManaged(&dens_prev, array_size))
+	checkCudaCall(cudaMallocManaged(&u, array_size));
+	checkCudaCall(cudaMallocManaged(&v, array_size));
+	checkCudaCall(cudaMallocManaged(&u_prev, array_size));
+	checkCudaCall(cudaMallocManaged(&v_prev, array_size));
+	checkCudaCall(cudaMallocManaged(&dens, array_size));
+	checkCudaCall(cudaMallocManaged(&dens_prev, array_size));
 
 	if ( !u || !v || !u_prev || !v_prev || !dens || !dens_prev ) {
 		fprintf ( stderr, "cannot allocate data\n" );

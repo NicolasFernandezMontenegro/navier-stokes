@@ -1,5 +1,5 @@
 CC=nvcc
-CFLAGS= -Xcompiler -Wall -02 -use_fast_math -arch=sm_50 
+CFLAGS= -Xcompiler -Wall -O2 -use_fast_math -arch=sm_50 
 LDFLAGS= 
 FLAGS_GCC= -ftree-vectorize -fopt-info-vec -fopt-info-vec-missed
 FLAGS_CLANG = -Rpass=loop-vectorize -Rpass-missed=loop-vectorize
