@@ -101,6 +101,7 @@ static void lin_solve(unsigned int n, boundary b,
         launch_step_cuda(RED, n, a, c, red0, blk, red);
         checkCudaCall(cudaDeviceSynchronize())
         launch_step_cuda(BLACK, n, a, c, blk0, red, blk);
+        checkCudaCall(cudaDeviceSynchronize())
         set_bnd(n, b, x);
     }
 }
