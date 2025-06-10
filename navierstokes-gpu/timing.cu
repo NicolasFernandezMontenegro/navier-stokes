@@ -6,7 +6,7 @@
 
 #include "timing.h"
 
-double wtime(void)
+__device__ __host__ double wtime(void)
 {
   struct timeval tv;
   gettimeofday(&tv, 0);
