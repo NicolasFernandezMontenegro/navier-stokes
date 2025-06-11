@@ -100,9 +100,9 @@ static void lin_solve(unsigned int n, boundary b,
 
     for (unsigned int k = 0; k < 20; ++k) {
         launch_step_cuda(RED, n, a, c, red0, blk, red);
-        checkCudaCall(cudaDeviceSynchronize())
+        checkCudaCall(cudaDeviceSynchronize());
         launch_step_cuda(BLACK, n, a, c, blk0, red, blk);
-        checkCudaCall(cudaDeviceSynchronize())
+        checkCudaCall(cudaDeviceSynchronize());
         set_bnd(n, b, x);
     }
 }
@@ -162,7 +162,7 @@ static void advect(unsigned int n, boundary b,
                        float dt)
     {
         unsigned int color_size = (n + 2) * ((n + 2) / 2);
-        float* __restrict__ Red = d;
+        float* __restrict__ d_Red = d;
         float* __restrict__ d_Blk = d + color_size;
         const float* __restrict__ u_Red = u;
         const float* __restrict__ u_Blk = u + color_size;

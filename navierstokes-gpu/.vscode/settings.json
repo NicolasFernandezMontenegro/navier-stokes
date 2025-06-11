@@ -11,6 +11,7 @@
         "string_view": "c",
         "initializer_list": "c",
         "stddef.h": "c",
-        "random": "cpp"
+        "random": "cpp",
+        "cstdlib": "cpp"
     }
 }
