@@ -258,9 +258,6 @@ __global__ static void project_rb_step_2_kernell(grid_color color,
 
         lin_solve(n, NONE, p, div, 1, 4);
 
-        dim3 block(16, 8);
-        dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
-
         project_rb_step_2_kernell<<<grid, block>>>(RED, n, blk_p, red_u, red_v);
         project_rb_step_2_kernell<<<grid, block>>>(BLACK, n, red_p, blk_u, blk_v);
 
