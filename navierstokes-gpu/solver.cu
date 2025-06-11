@@ -85,8 +85,6 @@ static void lin_solve(unsigned int n, boundary b,
     }
 }
 
-
-
 static void diffuse(unsigned int n, boundary b, float* x, const float* x0, float diff, float dt)
 {
     float a = dt * diff * n * n;
