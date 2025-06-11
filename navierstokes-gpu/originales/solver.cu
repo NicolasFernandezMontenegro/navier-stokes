@@ -43,50 +43,29 @@ static void set_bnd(unsigned int n, boundary b, float* x)
     x[IX(n + 1, n + 1)] = 0.5f * (x[IX(n, n + 1)] + x[IX(n + 1, n)]);
 }
 
-__global__ static void lin_solve_rb_step_cuda(grid_color color,
+static void lin_solve_rb_step(grid_color color,
                               unsigned int n,
-                              unsigned int width,
                               float a,
                               float c,
                               const float* __restrict__ same0,
                               const float* __restrict__ neigh,
                               float* __restrict__ same)
 {
-    uint x = blockIdx.x * blockDim.x + threadIdx.x;
-    uint y = blockIdx.y * blockDim.y + threadIdx.y + 1;
 
-    if ((y <= n) && (x < n/2)){
+    unsigned int width = (n + 2) / 2;
+
+    for (unsigned int y = 1; y <= n; ++y) {
         int parity = ((y + 1 + (color == BLACK)) % 2);
-        int index = idx(x + parity, y, width);
-        int shift = 1 - 2 * parity;
-        same[index] = (same0[index] + a * (neigh[index - width] 
-                                        + neigh[index] 
-                                        + neigh[index + shift] 
-                                        + neigh[index + width])) / c;
+        for (unsigned int x = 0; x < n / 2; ++x) {
+            int index = idx(x + parity, y, width);
+            int shift = 1 - 2 * parity;
+            same[index] = (same0[index] + a * (neigh[index - width] 
+                                            + neigh[index] 
+                                            + neigh[index + shift] 
+                                            + neigh[index + width])) / c;
+        }
     }
 }
-
-static uint div_ceil(uint a, uint b)
-{
-    return (a + b - 1) / b;
-}
-
-static void launch_step_cuda(grid_color color,
-                              unsigned int n,
-                              unsigned int width,
-                              float a,
-                              float c,
-                              const float* __restrict__ same0,
-                              const float* __restrict__ neigh,
-                              float* __restrict__ same)
-{
-    dim3 block(16, 8);
-    dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
-
-    lin_solve_rb_step_cuda<<<grid, block>>>(color, n, width, a, c, same0, neigh, same);
-    checkCudaCall(cudaGetLastError());
-}
-
 
 static void lin_solve(unsigned int n, boundary b,
                       float* __restrict__ x,
@@ -99,12 +78,9 @@ static void lin_solve(unsigned int n, boundary b,
     float* red = x;
     float* blk = x + color_size;
 
-    unsigned int width = (n + 2) / 2;
     for (unsigned int k = 0; k < 20; ++k) {
-        launch_step_cuda(RED, n, width, a, c, red0, blk, red);
-        checkCudaCall(cudaDeviceSynchronize());
-        launch_step_cuda(BLACK, n, width, a, c, blk0, red, blk);
-        checkCudaCall(cudaDeviceSynchronize());
+        lin_solve_rb_step(RED, n, a, c, red0, blk, red);
+        lin_solve_rb_step(BLACK, n, a, c, blk0, red, blk);
         set_bnd(n, b, x);
     }
 }
