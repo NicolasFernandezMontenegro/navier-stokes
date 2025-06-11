@@ -21,12 +21,6 @@ typedef enum { NONE = 0,
 typedef enum { RED,
                BLACK } grid_color;
 
-static uint div_ceil(uint a, uint b)
-{
-    return (a + b - 1) / b;
-}
-
-
 __global__ static void add_source_kernell(unsigned int n, float* x, const float* s, float dt)
 {
     uint i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -35,7 +29,6 @@ __global__ static void add_source_kernell(unsigned int n, float* x, const float*
          x[i] += dt * s[i];
     }
 }
-
 
 static void add_source(unsigned int n, float* x, const float* s, float dt)
 {

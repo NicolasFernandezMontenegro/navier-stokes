@@ -17,3 +17,9 @@ static __device__ __host__ inline size_t idx(size_t x, size_t y, size_t stride) 
 }
 
 #pragma GCC diagnostic pop
+
+static __device__ __host__ inline uint div_ceil(uint a, uint b)
+{
+    return (a + b - 1) / b;
+}
+
