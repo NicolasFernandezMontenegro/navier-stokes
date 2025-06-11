@@ -32,8 +32,8 @@ __global__ static void add_source_kernell(unsigned int n, float* x, const float*
 
 static void add_source(unsigned int n, float* x, const float* s, float dt)
 {
-    cudaMemPrefetchAsync(x, size * sizeof(float), 0);
-    cudaMemPrefetchAsync(s, size * sizeof(float), 0);
+    cudaMemPrefetchAsync(x, (n + 2)*(n + 2) * sizeof(float), 0);
+    cudaMemPrefetchAsync(s, (n + 2)*(n + 2) * sizeof(float), 0);
 
     unsigned int size = (n + 2) * (n + 2);
     dim3 block(128);
@@ -65,7 +65,7 @@ __global__ static void set_bnd_kernell(unsigned int n, boundary b, float* x)
 
 static void set_bnd(unsigned int n, boundary b, float* x)
 {
-    cudaMemPrefetchAsync(x, size * sizeof(float), 0);
+    cudaMemPrefetchAsync(x, (n + 2)*(n + 2) * sizeof(float), 0);
 
     dim3 block(128);
     dim3 grid(div_ceil(n-2, block.x));
@@ -103,8 +103,8 @@ static void lin_solve(unsigned int n, boundary b,
                       const float* __restrict__ x0,
                       float a, float c)
 {   
-    cudaMemPrefetchAsync(x, size * sizeof(float), 0);
-    cudaMemPrefetchAsync(x0, size * sizeof(float), 0);
+    cudaMemPrefetchAsync(x, (n + 2)*(n + 2) * sizeof(float), 0);
+    cudaMemPrefetchAsync(x0, (n + 2)*(n + 2) * sizeof(float), 0);
 
     unsigned int color_size = (n + 2) * ((n + 2) / 2);
     const float* red0 = x0;
