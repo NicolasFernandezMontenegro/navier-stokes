@@ -54,7 +54,7 @@ __global__ static void lin_solve_rb_step_cuda(grid_color color,
     uint x = blockIdx.x * blockDim.x + threadIdx.x;
     uint y = blockIdx.y * blockDim.y + threadIdx.y + 1;
 
-    if (y <= n) && (x < n/2){
+    if ((y <= n) && (x < n/2)){
         int parity = ((y + 1 + (color == BLACK)) % 2);
         int index = idx(x + parity, y, width);
         int shift = 1 - 2 * parity;
@@ -78,8 +78,8 @@ static void launch_step_cuda(grid_color color,
                               const float* restrict neigh,
                               float* restrict same)
 {
-    dim3 block(16, 8)
-    dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y))
+    dim3 block(16, 8);
+    dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
 
     lin_solve_rb_step_cuda<<<grid, block>>>(color, n, a, c, same0, neigh, same);
     checkCudaCall(cudaGetLastError());
@@ -161,8 +161,8 @@ static void advect(unsigned int n, boundary b,
                        float dt)
     {
         unsigned int color_size = (n + 2) * ((n + 2) / 2);
-        float* restrict d_Red = d;
-        float* restrict d_Blk = d + color_size;
+        float* d_Red = d;
+        float* d_Blk = d + color_size;
         const float* restrict u_Red = u;
         const float* restrict u_Blk = u + color_size;
         const float* restrict v_Red = v;
