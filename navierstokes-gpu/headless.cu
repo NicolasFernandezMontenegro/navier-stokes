@@ -58,12 +58,12 @@ static void free_data ( void )
 }
 
 __global__ static void clear_data_kernell ( int size,
-											static float * u, 
-											static float* v, 
-											static float * u_prev, 
-											static float * v_prev,
-											static float * dens, 
-											static float * dens_prev) {
+											float * u, 
+											float* v, 
+											float * u_prev, 
+											float * v_prev,
+											float * dens, 
+											float * dens_prev) {
 	uint i = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if (i < size){
