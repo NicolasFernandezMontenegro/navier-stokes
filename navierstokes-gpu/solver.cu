@@ -47,9 +47,9 @@ __global__ static void lin_solve_rb_step_cuda(grid_color color,
                               unsigned int n,
                               float a,
                               float c,
-                              const float* restrict same0,
-                              const float* restrict neigh,
-                              float* restrict same)
+                              const float* __restrict__ same0,
+                              const float* __restrict__ neigh,
+                              float* __restrict__ same)
 {
     uint x = blockIdx.x * blockDim.x + threadIdx.x;
     uint y = blockIdx.y * blockDim.y + threadIdx.y + 1;
@@ -75,9 +75,9 @@ static void launch_step_cuda(grid_color color,
                               unsigned int n,
                               float a,
                               float c,
-                              const float* restrict same0,
-                              const float* restrict neigh,
-                              float* restrict same)
+                              const float* __restrict__ same0,
+                              const float* __restrict__ neigh,
+                              float* __restrict__ same)
 {
     dim3 block(16, 8);
     dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
@@ -88,8 +88,8 @@ static void launch_step_cuda(grid_color color,
 
 
 static void lin_solve(unsigned int n, boundary b,
-                      float* restrict x,
-                      const float* restrict x0,
+                      float* __restrict__ x,
+                      const float* __restrict__ x0,
                       float a, float c)
 {
     unsigned int color_size = (n + 2) * ((n + 2) / 2);
@@ -116,10 +116,10 @@ static void diffuse(unsigned int n, boundary b, float* x, const float* x0, float
 
 static void advect_rb(grid_color color,
                           unsigned int n,
-                          float* restrict d,
-                          const float* restrict d0,
-                          const float* restrict u,
-                          const float* restrict v,
+                          float* __restrict__ d,
+                          const float* __restrict__ d0,
+                          const float* __restrict__ u,
+                          const float* __restrict__ v,
                           float dt)
     {
         int i0, i1, j0, j1;
@@ -155,19 +155,19 @@ static void advect_rb(grid_color color,
     }
 
 static void advect(unsigned int n, boundary b,
-                       float* restrict d,
-                       const float* restrict d0,
-                       const float* restrict u,
-                       const float* restrict v,
+                       float* __restrict__ d,
+                       const float* __restrict__ d0,
+                       const float* __restrict__ u,
+                       const float* __restrict__ v,
                        float dt)
     {
         unsigned int color_size = (n + 2) * ((n + 2) / 2);
-        float* d_Red = d;
-        float* d_Blk = d + color_size;
-        const float* restrict u_Red = u;
-        const float* restrict u_Blk = u + color_size;
-        const float* restrict v_Red = v;
-        const float* restrict v_Blk = v + color_size;
+        float* __restrict__ Red = d;
+        float* __restrict__ d_Blk = d + color_size;
+        const float* __restrict__ u_Red = u;
+        const float* __restrict__ u_Blk = u + color_size;
+        const float* __restrict__ v_Red = v;
+        const float* __restrict__ v_Blk = v + color_size;
 
         advect_rb(RED, n, d_Red, d0, u_Red, v_Red, dt);
         advect_rb(BLACK, n, d_Blk, d0, u_Blk, v_Blk, dt);
@@ -177,10 +177,10 @@ static void advect(unsigned int n, boundary b,
 
 static void project_rb_step_1(grid_color color,
                                   unsigned int n,
-                                  float* restrict u,
-                                  float* restrict v,
-                                  float* restrict div,
-                                  float* restrict p)
+                                  float* __restrict__ u,
+                                  float* __restrict__ v,
+                                  float* __restrict__ div,
+                                  float* __restrict__ p)
     {
         unsigned int width = (n + 2) / 2;
         for (unsigned int y = 1; y <= n; ++y) {
@@ -201,9 +201,9 @@ static void project_rb_step_1(grid_color color,
 
 static void project_rb_step_2(grid_color color,
                                   unsigned int n,
-                                  float* restrict p,
-                                  float* restrict u,
-                                  float* restrict v)
+                                  float* __restrict__ p,
+                                  float* __restrict__ u,
+                                  float* __restrict__ v)
     {
         unsigned int width = (n + 2) / 2;
         for (unsigned int y = 1; y <= n; ++y) {
@@ -218,7 +218,7 @@ static void project_rb_step_2(grid_color color,
         }
     }
 
-    static void project(unsigned int n, float* restrict u, float* restrict v, float* restrict p, float* restrict div)
+    static void project(unsigned int n, float* __restrict__ u, float* __restrict__ v, float* __restrict__ p, float* __restrict__ div)
     {
         unsigned int color_size = (n + 2) * ((n + 2) / 2);
         float* red_u = u;
