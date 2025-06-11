@@ -29,21 +29,36 @@ static void add_source(unsigned int n, float* x, const float* s, float dt)
     }
 }
 
-static void set_bnd(unsigned int n, boundary b, float* x)
+__global__ static void set_bnd_kernell(unsigned int n, boundary b, float* x)
 {
-    for (unsigned int i = 1; i <= n; i++) {
+    uint x = blockIdx.x * blockDim.x + threadIdx.x;
+    if (0 < i && i < n){
         x[IX(0, i)] = b == VERTICAL ? -x[IX(1, i)] : x[IX(1, i)];
         x[IX(n + 1, i)] = b == VERTICAL ? -x[IX(n, i)] : x[IX(n, i)];
         x[IX(i, 0)] = b == HORIZONTAL ? -x[IX(i, 1)] : x[IX(i, 1)];
         x[IX(i, n + 1)] = b == HORIZONTAL ? -x[IX(i, n)] : x[IX(i, n)];
     }
-    x[IX(0, 0)] = 0.5f * (x[IX(1, 0)] + x[IX(0, 1)]);
-    x[IX(0, n + 1)] = 0.5f * (x[IX(1, n + 1)] + x[IX(0, n)]);
-    x[IX(n + 1, 0)] = 0.5f * (x[IX(n, 0)] + x[IX(n + 1, 1)]);
-    x[IX(n + 1, n + 1)] = 0.5f * (x[IX(n, n + 1)] + x[IX(n + 1, n)]);
+    __syncthreads();
+    if (i < 0){
+        x[IX(0, 0)] = 0.5f * (x[IX(1, 0)] + x[IX(0, 1)]);
+        x[IX(0, n + 1)] = 0.5f * (x[IX(1, n + 1)] + x[IX(0, n)]);
+        x[IX(n + 1, 0)] = 0.5f * (x[IX(n, 0)] + x[IX(n + 1, 1)]);
+        x[IX(n + 1, n + 1)] = 0.5f * (x[IX(n, n + 1)] + x[IX(n + 1, n)])
+    };
+    __syncthreads();
 }
 
-__global__ static void lin_solve_rb_step_cuda(grid_color color,
+static void set_bnd(unsigned int n, boundary b, float* x)
+{
+    dim3 block(16, 8);
+    dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
+
+    set_bnd_kernell<<<grid, block>>>(RED, n, width, a, c, red0, blk, red);
+    checkCudaCall(cudaGetLastError());
+    checkCudaCall(cudaDeviceSynchronize());
+}
+
+__global__ static void lin_solve_rb_step_kernell(grid_color color,
                               unsigned int n,
                               unsigned int width,
                               float a,
@@ -88,10 +103,10 @@ static void lin_solve(unsigned int n, boundary b,
 
 
     for (unsigned int k = 0; k < 20; ++k) {
-        lin_solve_rb_step_cuda<<<grid, block>>>(RED, n, width, a, c, red0, blk, red);
+        lin_solve_rb_step_kernell<<<grid, block>>>(RED, n, width, a, c, red0, blk, red);
         checkCudaCall(cudaGetLastError());
 
-        lin_solve_rb_step_cuda<<<grid, block>>>(BLACK, n, width, a, c, blk0, red, blk);
+        lin_solve_rb_step_kernell<<<grid, block>>>(BLACK, n, width, a, c, blk0, red, blk);
         checkCudaCall(cudaGetLastError());
         checkCudaCall(cudaDeviceSynchronize());
         set_bnd(n, b, x);

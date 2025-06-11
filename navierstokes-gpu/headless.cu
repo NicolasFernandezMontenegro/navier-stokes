@@ -71,12 +71,6 @@ static int allocate_data ( void )
 	int size = (N+2)*(N+2);
 	
 	size_t array_size = size*sizeof(float);
-	float * u = nullptr;
-	float * v = nullptr;
-	float * u_prev = nullptr;
-	float * v_prev = nullptr;
-	float * dens = nullptr;
-	float * dens_prev = nullptr;
 	
 	checkCudaCall(cudaMallocManaged(&u, array_size));
 	checkCudaCall(cudaMallocManaged(&v, array_size));
@@ -85,7 +79,7 @@ static int allocate_data ( void )
 	checkCudaCall(cudaMallocManaged(&dens, array_size));
 	checkCudaCall(cudaMallocManaged(&dens_prev, array_size));
 
-	print("ALLOQUE")
+	fprint("ALLOQUE")
 
 	if ( !u || !v || !u_prev || !v_prev || !dens || !dens_prev ) {
 		fprintf ( stderr, "cannot allocate data\n" );
