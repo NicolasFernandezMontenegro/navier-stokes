@@ -26,7 +26,7 @@ static uint div_ceil(uint a, uint b)
     return (a + b - 1) / b;
 }
 
-/*
+
 __global__ static void add_source_kernell(unsigned int n, float* x, const float* s, float dt)
 {
     uint i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -35,24 +35,17 @@ __global__ static void add_source_kernell(unsigned int n, float* x, const float*
          x[i] += dt * s[i];
     }
 }
-*/
 
 
 static void add_source(unsigned int n, float* x, const float* s, float dt)
 {
-    
     unsigned int size = (n + 2) * (n + 2);
-    for (uint i = 0; i < size; i ++){
-         x[i] += dt * s[i];
-    }
-    /*
-    dim3 block(16, 8);
-    dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
+    dim3 block(128);
+    dim3 grid(div_ceil(size, block.x));
 
     add_source_kernell<<<grid, block>>>(n, x, s, dt);
     checkCudaCall(cudaGetLastError());
     checkCudaCall(cudaDeviceSynchronize());    
-    */
 
 }
 
