@@ -12,6 +12,7 @@
         "initializer_list": "c",
         "stddef.h": "c",
         "random": "cpp",
-        "cstdlib": "cpp"
+        "cstdlib": "cpp",
+        "utility": "cpp"
     }
 }

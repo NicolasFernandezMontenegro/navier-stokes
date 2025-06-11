@@ -64,6 +64,13 @@ static void clear_data ( void )
 	for ( i=0 ; i<size ; i++ ) {
 		u[i] = v[i] = u_prev[i] = v_prev[i] = dens[i] = dens_prev[i] = 0.0f;
 	}
+
+	cudaMemPrefetchAsync(u,        size * sizeof(float), device_id);
+	cudaMemPrefetchAsync(u_prev,   size * sizeof(float), device_id);
+	cudaMemPrefetchAsync(v,        size * sizeof(float), device_id);
+	cudaMemPrefetchAsync(v_prev,   size * sizeof(float), device_id);
+	cudaMemPrefetchAsync(dens,     size * sizeof(float), device_id);
+	cudaMemPrefetchAsync(dens_prev,size * sizeof(float), device_id);
 }
 
 static int allocate_data ( void )

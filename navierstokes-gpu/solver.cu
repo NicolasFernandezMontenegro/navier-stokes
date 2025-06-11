@@ -26,12 +26,23 @@ static uint div_ceil(uint a, uint b)
     return (a + b - 1) / b;
 }
 
+__global__ static void add_source_kernell(unsigned int n, float* x, const float* s, float dt)
+{
+    uint i = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int size = (n + 2) * (n + 2);
+    if (i < size){
+         x[i] += dt * s[i];
+    }
+}
+
 static void add_source(unsigned int n, float* x, const float* s, float dt)
 {
-    unsigned int size = (n + 2) * (n + 2);
-    for (unsigned int i = 0; i < size; i++) {
-        x[i] += dt * s[i];
-    }
+    dim3 block(16, 8);
+    dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
+
+    add_source_kernell<<<grid, block>>>(n, x, s, dt);
+    checkCudaCall(cudaGetLastError());
+    checkCudaCall(cudaDeviceSynchronize());
 }
 
 __global__ static void set_bnd_kernell(unsigned int n, boundary b, float* x)
@@ -50,7 +61,6 @@ __global__ static void set_bnd_kernell(unsigned int n, boundary b, float* x)
         x[IX(n + 1, 0)] = 0.5f * (x[IX(n, 0)] + x[IX(n + 1, 1)]);
         x[IX(n + 1, n + 1)] = 0.5f * (x[IX(n, n + 1)] + x[IX(n + 1, n)]);
     }
-    __syncthreads();
 }
 
 static void set_bnd(unsigned int n, boundary b, float* x)
@@ -181,46 +191,47 @@ static void advect(unsigned int n, boundary b,
         set_bnd(n, b, d);
     }
 
-static void project_rb_step_1(grid_color color,
+static void project_rb_step_1_kernell(grid_color color,
                                   unsigned int n,
                                   float* __restrict__ u,
                                   float* __restrict__ v,
                                   float* __restrict__ div,
                                   float* __restrict__ p)
     {
+        uint x = blockIdx.x * blockDim.x + threadIdx.x;
+        uint y = blockIdx.y * blockDim.y + threadIdx.y + 1;
+
         unsigned int width = (n + 2) / 2;
-        for (unsigned int y = 1; y <= n; ++y) {
-            for (unsigned int x = 0; x < n / 2; ++x) {
-                int parity = ((y + 1 + (color == BLACK)) % 2);
-                int index = idx(x + parity, y, width);
-                int shift = 1 - 2 * parity;
+        if ((y <= n) && (x < n/2)){
+            int parity = ((y + 1 + (color == BLACK)) % 2);
+            int index = idx(x + parity, y, width);
+            int shift = 1 - 2 * parity;
 
-                // float dudx = (parity == 1) ? (u[index] - u[index + shift]) : u[index + shift] - u[index] ;
-                float dudx = shift * (u[index + shift] - u[index]);
-                float dvdy = v[index + width] - v[index - width];
+            float dudx = shift * (u[index + shift] - u[index]);
+            float dvdy = v[index + width] - v[index - width];
 
-                div[index] = -0.5 * (dudx + dvdy) / n;
-                p[index] = 0;
-            }
+            div[index] = -0.5 * (dudx + dvdy) / n;
+            p[index] = 0;
         }
     }
 
-static void project_rb_step_2(grid_color color,
+static void project_rb_step_2_kernell(grid_color color,
                                   unsigned int n,
                                   float* __restrict__ p,
                                   float* __restrict__ u,
                                   float* __restrict__ v)
     {
-        unsigned int width = (n + 2) / 2;
-        for (unsigned int y = 1; y <= n; ++y) {
-            for (unsigned int x = 0; x < n / 2; ++x) {
-                int parity = ((y + 1 + (color == BLACK)) % 2);
-                int index = idx(x + parity, y, width);
-                int shift = 1 - 2 * parity;
+        uint x = blockIdx.x * blockDim.x + threadIdx.x;
+        uint y = blockIdx.y * blockDim.y + threadIdx.y + 1;
 
-                u[index] -= 0.5 * n * (shift * (p[index + shift] - p[index]));
-                v[index] -= 0.5 * n * (p[index + width] - p[index - width]);
-            }
+        unsigned int width = (n + 2) / 2;
+        if ((y <= n) && (x < n/2)){
+            int parity = ((y + 1 + (color == BLACK)) % 2);
+            int index = idx(x + parity, y, width);
+            int shift = 1 - 2 * parity;
+
+            u[index] -= 0.5 * n * (shift * (p[index + shift] - p[index]));
+            v[index] -= 0.5 * n * (p[index + width] - p[index - width]);
         }
     }
 
@@ -236,16 +247,22 @@ static void project_rb_step_2(grid_color color,
         float* red_div = div;
         float* blk_div = div + color_size;
 
-        project_rb_step_1(RED, n, blk_u, blk_v, red_div, red_p);
-        project_rb_step_1(BLACK, n, red_u, red_v, blk_div, blk_p);
+        dim3 block(16, 8);
+        dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
+
+        project_rb_step_1_kernell<<<grid, block>>>(RED, n, blk_u, blk_v, red_div, red_p);
+        project_rb_step_1_kernell<<<grid, block>>>(BLACK, n, red_u, red_v, blk_div, blk_p);
 
         set_bnd(n, NONE, div);
         set_bnd(n, NONE, p);
 
         lin_solve(n, NONE, p, div, 1, 4);
 
-        project_rb_step_2(RED, n, blk_p, red_u, red_v);
-        project_rb_step_2(BLACK, n, red_p, blk_u, blk_v);
+        dim3 block(16, 8);
+        dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
+
+        project_rb_step_2_kernell<<<grid, block>>>(RED, n, blk_p, red_u, red_v);
+        project_rb_step_2_kernell<<<grid, block>>>(BLACK, n, red_p, blk_u, blk_v);
 
         set_bnd(n, VERTICAL, u);
         set_bnd(n, HORIZONTAL, v);
