@@ -57,22 +57,24 @@ static void free_data ( void )
 	if ( dens_prev ) checkCudaCall(cudaFree( dens_prev ));
 }
 
-static void clear_data ( void )
-{
+__global__ static void clear_data_kernell ( void ) {
 	int i, size=(N+2)*(N+2);
 
-	for ( i=0 ; i<size ; i++ ) {
+	if (i < size){
 		u[i] = v[i] = u_prev[i] = v_prev[i] = dens[i] = dens_prev[i] = 0.0f;
 	}
 
-	int device_id = cudaGetDevice(&device_id);
+}
 
-	cudaMemPrefetchAsync(u,        size * sizeof(float), device_id);
-	cudaMemPrefetchAsync(u_prev,   size * sizeof(float), device_id);
-	cudaMemPrefetchAsync(v,        size * sizeof(float), device_id);
-	cudaMemPrefetchAsync(v_prev,   size * sizeof(float), device_id);
-	cudaMemPrefetchAsync(dens,     size * sizeof(float), device_id);
-	cudaMemPrefetchAsync(dens_prev,size * sizeof(float), device_id);
+
+static void clear_data ( void )
+{
+	dim3 block(128);
+    dim3 grid(div_ceil(size));
+
+    clear_data_kernell<<<grid, block>>>();
+    checkCudaCall(cudaGetLastError());
+    checkCudaCall(cudaDeviceSynchronize());
 }
 
 static int allocate_data ( void )
@@ -87,6 +89,14 @@ static int allocate_data ( void )
 	checkCudaCall(cudaMallocManaged(&v_prev, array_size));
 	checkCudaCall(cudaMallocManaged(&dens, array_size));
 	checkCudaCall(cudaMallocManaged(&dens_prev, array_size));
+
+	int device_id = cudaGetDevice(&device_id);
+	cudaMemPrefetchAsync(u,        size * sizeof(float), device_id);
+	cudaMemPrefetchAsync(u_prev,   size * sizeof(float), device_id);
+	cudaMemPrefetchAsync(v,        size * sizeof(float), device_id);
+	cudaMemPrefetchAsync(v_prev,   size * sizeof(float), device_id);
+	cudaMemPrefetchAsync(dens,     size * sizeof(float), device_id);
+	cudaMemPrefetchAsync(dens_prev,size * sizeof(float), device_id);
 
 	if ( !u || !v || !u_prev || !v_prev || !dens || !dens_prev ) {
 		fprintf ( stderr, "cannot allocate data\n" );
