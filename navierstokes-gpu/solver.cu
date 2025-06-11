@@ -44,25 +44,25 @@ static void set_bnd(unsigned int n, boundary b, float* x)
 }
 
 static void lin_solve_rb_step(grid_color color,
-                              unsigned int start_y,
-                              unsigned int start_x,
                               unsigned int n,
-                              unsigned int width,
                               float a,
                               float c,
                               const float* __restrict__ same0,
                               const float* __restrict__ neigh,
                               float* __restrict__ same)
-{   
-    unsigned int ymax = (start_y + SIZE_BLOCK <= n) ? start_y + SIZE_BLOCK : n;
-    unsigned int xmax = (start_x + SIZE_BLOCK <= n/2) ? start_x + SIZE_BLOCK : n/2;
+{
 
-    for (unsigned int y = start_y; y <= ymax; ++y) {
+    unsigned int width = (n + 2) / 2;
+
+    for (unsigned int y = 1; y <= n; ++y) {
         int parity = ((y + 1 + (color == BLACK)) % 2);
-        for (unsigned int x = start_x; x < xmax; ++x) {
+        for (unsigned int x = 0; x < n / 2; ++x) {
             int index = idx(x + parity, y, width);
             int shift = 1 - 2 * parity;
-            same[index] = (same0[index] + a * (neigh[index - width] + neigh[index] + neigh[index + shift] + neigh[index + width])) / c;
+            same[index] = (same0[index] + a * (neigh[index - width] 
+                                            + neigh[index] 
+                                            + neigh[index + shift] 
+                                            + neigh[index + width])) / c;
         }
     }
 }
@@ -78,23 +78,13 @@ static void lin_solve(unsigned int n, boundary b,
     float* red = x;
     float* blk = x + color_size;
 
-    unsigned int width = (n + 2) / 2;
     for (unsigned int k = 0; k < 20; ++k) {
-        #pragma omp parallel 
-        {
-            #pragma omp for 
-            {
-                for (unsigned int by = 1; by <= n; by += SIZE_BLOCK) {
-                    for (unsigned int bx = 0; bx < n / 2; bx += SIZE_BLOCK) {
-                        lin_solve_rb_step(RED, by, bx, n, width, a, c, red0, blk, red);
-                        lin_solve_rb_step(BLACK, by, bx, n, width, a, c, blk0, red, blk);
-                    }
-                }
-            }            
-        }
+        lin_solve_rb_step(RED, n, a, c, red0, blk, red);
+        lin_solve_rb_step(BLACK, n, a, c, blk0, red, blk);
         set_bnd(n, b, x);
     }
 }
+
 
 
 static void diffuse(unsigned int n, boundary b, float* x, const float* x0, float diff, float dt)
