@@ -177,6 +177,11 @@ static void advect(unsigned int n, boundary b,
                        const float* __restrict__ v,
                        float dt)
     {
+        cudaMemPrefetchAsync(d, (n + 2)*(n + 2) * sizeof(float), 0);
+        cudaMemPrefetchAsync(d0, (n + 2)*(n + 2) * sizeof(float), 0);
+        cudaMemPrefetchAsync(u, (n + 2)*(n + 2) * sizeof(float), 0);
+        cudaMemPrefetchAsync(v, (n + 2)*(n + 2) * sizeof(float), 0);
+
         unsigned int color_size = (n + 2) * ((n + 2) / 2);
         float* __restrict__ d_Red = d;
         float* __restrict__ d_Blk = d + color_size;
@@ -242,7 +247,12 @@ __global__ static void project_rb_step_2_kernell(grid_color color,
     }
 
     static void project(unsigned int n, float* __restrict__ u, float* __restrict__ v, float* __restrict__ p, float* __restrict__ div)
-    {
+    {   
+        cudaMemPrefetchAsync(u, (n + 2)*(n + 2) * sizeof(float), 0);
+        cudaMemPrefetchAsync(v, (n + 2)*(n + 2) * sizeof(float), 0);
+        cudaMemPrefetchAsync(p, (n + 2)*(n + 2) * sizeof(float), 0);
+        cudaMemPrefetchAsync(div, (n + 2)*(n + 2) * sizeof(float), 0);
+        
         unsigned int color_size = (n + 2) * ((n + 2) / 2);
         float* red_u = u;
         float* blk_u = u + color_size;
