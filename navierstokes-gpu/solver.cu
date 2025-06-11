@@ -53,6 +53,7 @@ __global__ static void lin_solve_rb_step_cuda(grid_color color,
 {
     uint x = blockIdx.x * blockDim.x + threadIdx.x;
     uint y = blockIdx.y * blockDim.y + threadIdx.y + 1;
+    int width = n + 2;
 
     if ((y <= n) && (x < n/2)){
         int parity = ((y + 1 + (color == BLACK)) % 2);
