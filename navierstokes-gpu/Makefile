@@ -5,7 +5,7 @@ FLAGS_GCC= -ftree-vectorize -fopt-info-vec -fopt-info-vec-missed
 FLAGS_CLANG = -Rpass=loop-vectorize -Rpass-missed=loop-vectorize
 
 TARGETS=demo headless
-SOURCES=$(shell echo *.c)
+SOURCES=$(wildcard *.cu)
 COMMON_OBJECTS=solver.o timing.o
 
 # Definir las optimizaciones
@@ -26,6 +26,9 @@ demo: demo.o $(COMMON_OBJECTS)
 
 headless: headless.o $(COMMON_OBJECTS)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+
+%.o: %.cu
+	$(CC) $(CFLAGS) -c $< -o $@
 
 run_all:  o0 comb_2 comb_3
 
