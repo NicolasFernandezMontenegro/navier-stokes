@@ -21,6 +21,11 @@ typedef enum { NONE = 0,
 typedef enum { RED,
                BLACK } grid_color;
 
+static uint div_ceil(uint a, uint b)
+{
+    return (a + b - 1) / b;
+}
+
 static void add_source(unsigned int n, float* x, const float* s, float dt)
 {
     unsigned int size = (n + 2) * (n + 2);
@@ -39,7 +44,7 @@ __global__ static void set_bnd_kernell(unsigned int n, boundary b, float* x)
         x[IX(i, n + 1)] = b == HORIZONTAL ? -x[IX(i, n)] : x[IX(i, n)];
     }
     __syncthreads();
-    if (i < 0){
+    if (i == 0){
         x[IX(0, 0)] = 0.5f * (x[IX(1, 0)] + x[IX(0, 1)]);
         x[IX(0, n + 1)] = 0.5f * (x[IX(1, n + 1)] + x[IX(0, n)]);
         x[IX(n + 1, 0)] = 0.5f * (x[IX(n, 0)] + x[IX(n + 1, 1)]);
@@ -79,11 +84,6 @@ __global__ static void lin_solve_rb_step_kernell(grid_color color,
                                         + neigh[index + shift] 
                                         + neigh[index + width])) / c;
     }
-}
-
-static uint div_ceil(uint a, uint b)
-{
-    return (a + b - 1) / b;
 }
 
 static void lin_solve(unsigned int n, boundary b,
