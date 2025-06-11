@@ -36,6 +36,9 @@ static void add_source(unsigned int n, float* x, const float* s, float dt)
     dim3 block(128);
     dim3 grid(div_ceil(size, block.x));
 
+    cudaMemPrefetchAsync(x, size * sizeof(float), 0);
+    cudaMemPrefetchAsync(s, size * sizeof(float), 0);
+
     add_source_kernell<<<grid, block>>>(n, x, s, dt);
     checkCudaCall(cudaGetLastError());
     checkCudaCall(cudaDeviceSynchronize());    
