@@ -45,6 +45,7 @@ static void set_bnd(unsigned int n, boundary b, float* x)
 
 __global__ static void lin_solve_rb_step_cuda(grid_color color,
                               unsigned int n,
+                              unsigned int width,
                               float a,
                               float c,
                               const float* __restrict__ same0,
@@ -53,7 +54,6 @@ __global__ static void lin_solve_rb_step_cuda(grid_color color,
 {
     uint x = blockIdx.x * blockDim.x + threadIdx.x;
     uint y = blockIdx.y * blockDim.y + threadIdx.y + 1;
-    int width = n + 2;
 
     if ((y <= n) && (x < n/2)){
         int parity = ((y + 1 + (color == BLACK)) % 2);
@@ -73,6 +73,7 @@ static uint div_ceil(uint a, uint b)
 
 static void launch_step_cuda(grid_color color,
                               unsigned int n,
+                              unsigned int width,
                               float a,
                               float c,
                               const float* __restrict__ same0,
@@ -82,7 +83,7 @@ static void launch_step_cuda(grid_color color,
     dim3 block(16, 8);
     dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
 
-    lin_solve_rb_step_cuda<<<grid, block>>>(color, n, a, c, same0, neigh, same);
+    lin_solve_rb_step_cuda<<<grid, block>>>(color, n, width a, c, same0, neigh, same);
     checkCudaCall(cudaGetLastError());
 }
 
@@ -98,10 +99,11 @@ static void lin_solve(unsigned int n, boundary b,
     float* red = x;
     float* blk = x + color_size;
 
+    unsigned int width = (n + 2) / 2;
     for (unsigned int k = 0; k < 20; ++k) {
-        launch_step_cuda(RED, n, a, c, red0, blk, red);
+        launch_step_cuda(RED, n, width, a, c, red0, blk, red);
         checkCudaCall(cudaDeviceSynchronize());
-        launch_step_cuda(BLACK, n, a, c, blk0, red, blk);
+        launch_step_cuda(BLACK, n, width, a, c, blk0, red, blk);
         checkCudaCall(cudaDeviceSynchronize());
         set_bnd(n, b, x);
     }
