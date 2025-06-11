@@ -43,8 +43,8 @@ __global__ static void set_bnd_kernell(unsigned int n, boundary b, float* x)
         x[IX(0, 0)] = 0.5f * (x[IX(1, 0)] + x[IX(0, 1)]);
         x[IX(0, n + 1)] = 0.5f * (x[IX(1, n + 1)] + x[IX(0, n)]);
         x[IX(n + 1, 0)] = 0.5f * (x[IX(n, 0)] + x[IX(n + 1, 1)]);
-        x[IX(n + 1, n + 1)] = 0.5f * (x[IX(n, n + 1)] + x[IX(n + 1, n)])
-    };
+        x[IX(n + 1, n + 1)] = 0.5f * (x[IX(n, n + 1)] + x[IX(n + 1, n)]);
+    }
     __syncthreads();
 }
 
@@ -53,7 +53,7 @@ static void set_bnd(unsigned int n, boundary b, float* x)
     dim3 block(16, 8);
     dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
 
-    set_bnd_kernell<<<grid, block>>>(RED, n, width, a, c, red0, blk, red);
+    set_bnd_kernell<<<grid, block>>>(n, b, x);
     checkCudaCall(cudaGetLastError());
     checkCudaCall(cudaDeviceSynchronize());
 }
