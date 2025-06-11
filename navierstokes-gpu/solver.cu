@@ -83,7 +83,7 @@ static void launch_step_cuda(grid_color color,
     dim3 block(16, 8);
     dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
 
-    lin_solve_rb_step_cuda<<<grid, block>>>(color, n, width a, c, same0, neigh, same);
+    lin_solve_rb_step_cuda<<<grid, block>>>(color, n, width, a, c, same0, neigh, same);
     checkCudaCall(cudaGetLastError());
 }
 
@@ -174,10 +174,7 @@ static void advect(unsigned int n, boundary b,
         advect_rb(RED, n, d_Red, d0, u_Red, v_Red, dt);
         advect_rb(BLACK, n, d_Blk, d0, u_Blk, v_Blk, dt);
         
-        set_bnd(n, b, d);
-    }
-
-static void project_rb_step_1(grid_color color,
+        set_bnd(n, b, d);    int width = (n + 2)/;d_color color,
                                   unsigned int n,
                                   float* __restrict__ u,
                                   float* __restrict__ v,
