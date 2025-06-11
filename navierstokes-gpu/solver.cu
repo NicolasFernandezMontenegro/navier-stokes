@@ -191,7 +191,7 @@ static void advect(unsigned int n, boundary b,
         set_bnd(n, b, d);
     }
 
-static void project_rb_step_1_kernell(grid_color color,
+__global__ static void project_rb_step_1_kernell(grid_color color,
                                   unsigned int n,
                                   float* __restrict__ u,
                                   float* __restrict__ v,
@@ -215,7 +215,7 @@ static void project_rb_step_1_kernell(grid_color color,
         }
     }
 
-static void project_rb_step_2_kernell(grid_color color,
+__global__ static void project_rb_step_2_kernell(grid_color color,
                                   unsigned int n,
                                   float* __restrict__ p,
                                   float* __restrict__ u,
