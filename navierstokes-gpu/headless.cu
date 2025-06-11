@@ -60,7 +60,7 @@ static void free_data ( void )
 __global__ static void clear_data_kernell ( void ) {
 	uint i = blockIdx.x * blockDim.x + threadIdx.x;
 	int size=(N+2)*(N+2);
-	
+
 	if (i < size){
 		u[i] = v[i] = u_prev[i] = v_prev[i] = dens[i] = dens_prev[i] = 0.0f;
 	}
@@ -70,7 +70,7 @@ __global__ static void clear_data_kernell ( void ) {
 
 static void clear_data ( void )
 {
-	size=(N+2)*(N+2);
+	int size=(N+2)*(N+2);
 	dim3 block(128);
     dim3 grid(div_ceil(size, block.x));
 
