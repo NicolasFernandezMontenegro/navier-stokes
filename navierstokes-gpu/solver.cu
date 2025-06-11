@@ -37,7 +37,7 @@ static void add_source(unsigned int n, float* x, const float* s, float dt)
 __global__ static void set_bnd_kernell(unsigned int n, boundary b, float* x)
 {
     uint i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (0 < i && i < n){
+    if (0 < i && i <= n){
         x[IX(0, i)] = b == VERTICAL ? -x[IX(1, i)] : x[IX(1, i)];
         x[IX(n + 1, i)] = b == VERTICAL ? -x[IX(n, i)] : x[IX(n, i)];
         x[IX(i, 0)] = b == HORIZONTAL ? -x[IX(i, 1)] : x[IX(i, 1)];
