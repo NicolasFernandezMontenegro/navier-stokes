@@ -69,8 +69,8 @@ __global__ static void set_bnd_kernell(unsigned int n, boundary b, float* x)
 
 static void set_bnd(unsigned int n, boundary b, float* x)
 {
-    dim3 block(16, 8);
-    dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
+    dim3 block(128);
+    dim3 grid(div_ceil(n-2, block.x));
 
     set_bnd_kernell<<<grid, block>>>(n, b, x);
     checkCudaCall(cudaGetLastError());
@@ -134,7 +134,7 @@ static void diffuse(unsigned int n, boundary b, float* x, const float* x0, float
 }
 
 
-static void advect_rb(grid_color color,
+__global__ static void advect_rb_step_kernell(grid_color color,
                           unsigned int n,
                           float* __restrict__ d,
                           const float* __restrict__ d0,
@@ -142,37 +142,38 @@ static void advect_rb(grid_color color,
                           const float* __restrict__ v,
                           float dt)
     {
-        int i0, i1, j0, j1;
-        float x, y, s0, t0, s1, t1;
-        unsigned int width = (n + 2) / 2;
+    unsigned int width = (n + 2) / 2;
+    unsigned int j = blockIdx.y * blockDim.y + threadIdx.y + 1;
+    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x + 1;
+
+    if (i <= n/2 && j <= n){
+        unsigned int is_odd = (color) ? 1 - (j % 2) : (j % 2);
+        int x_idx = i - is_odd;
+
+        int index = idx(x_idx, j, width);
+
         float dt0 = dt * n;
-        for (unsigned int j = 1; j <= n; j++) {
-            unsigned int is_odd = (color)? 1 - (j % 2) : (j % 2);
-            for (unsigned int  i= 1; i <= n/2; i++) { 
-                int index = idx(i - is_odd, j, width);
-                x = (2 * i - is_odd) - dt0 * u[index];
-                y = j - dt0 * v[index];
+        float x = (2 * i - is_odd) - dt0 * u[index];
+        float y = j - dt0 * v[index];
 
-                x = fmaxf(x, 0.5f);
-                x = fminf(x, n + 0.5f);
-                y = fmaxf(y, 0.5f);
-                y = fminf(y, n + 0.5f);
+        x = fmaxf(0.5f, fminf(x, n + 0.5f));
+        y = fmaxf(0.5f, fminf(y, n + 0.5f));
 
-                i0 = (int)x;
-                i1 = i0 + 1;
-                j0 = (int)y;
-                j1 = j0 + 1;
-                s1 = x - i0;
-                s0 = 1 - s1;
-                t1 = y - j0;
-                t0 = 1 - t1;
+        int i0 = (int)x;
+        int i1 = i0 + 1;
+        int j0 = (int)y;
+        int j1 = j0 + 1;
 
-                d[index] = s0 * (t0 * d0[IX(i0, j0)] + t1 * d0[IX(i0, j1)]) +
-                        s1 * (t0 * d0[IX(i1, j0)] + t1 * d0[IX(i1, j1)]);
-           
-            }
-        }
-    }
+        float s1 = x - i0;
+        float s0 = 1.0f - s1;
+        float t1 = y - j0;
+        float t0 = 1.0f - t1;
+
+        d[index] =
+            s0 * (t0 * d0[IX(i0, j0)] + t1 * d0[IX(i0, j1)]) +
+            s1 * (t0 * d0[IX(i1, j0)] + t1 * d0[IX(i1, j1)]);
+    }   
+}  
 
 static void advect(unsigned int n, boundary b,
                        float* __restrict__ d,
@@ -189,8 +190,14 @@ static void advect(unsigned int n, boundary b,
         const float* __restrict__ v_Red = v;
         const float* __restrict__ v_Blk = v + color_size;
 
-        advect_rb(RED, n, d_Red, d0, u_Red, v_Red, dt);
-        advect_rb(BLACK, n, d_Blk, d0, u_Blk, v_Blk, dt);
+        dim3 block(16, 8);
+        dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
+
+        advect_rb_step_kernell<<<grid, block>>>(RED, n, d_Red, d0, u_Red, v_Red, dt);
+        checkCudaCall(cudaGetLastError());
+        advect_rb_step_kernell<<<grid, block>>>(BLACK, n, d_Blk, d0, u_Blk, v_Blk, dt);
+        checkCudaCall(cudaGetLastError());
+        checkCudaCall(cudaDeviceSynchronize());
         
         set_bnd(n, b, d);
     }
