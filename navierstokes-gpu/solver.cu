@@ -174,7 +174,10 @@ static void advect(unsigned int n, boundary b,
         advect_rb(RED, n, d_Red, d0, u_Red, v_Red, dt);
         advect_rb(BLACK, n, d_Blk, d0, u_Blk, v_Blk, dt);
         
-        set_bnd(n, b, d);    int width = (n + 2)/;d_color color,
+        set_bnd(n, b, d);
+    }
+
+static void project_rb_step_1(grid_color color,
                                   unsigned int n,
                                   float* __restrict__ u,
                                   float* __restrict__ v,
