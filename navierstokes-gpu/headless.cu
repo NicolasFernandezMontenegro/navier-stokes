@@ -79,8 +79,6 @@ static int allocate_data ( void )
 	checkCudaCall(cudaMallocManaged(&dens, array_size));
 	checkCudaCall(cudaMallocManaged(&dens_prev, array_size));
 
-	fprint("ALLOQUE")
-
 	if ( !u || !v || !u_prev || !v_prev || !dens || !dens_prev ) {
 		fprintf ( stderr, "cannot allocate data\n" );
 		return ( 0 );
