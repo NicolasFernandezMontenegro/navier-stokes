@@ -57,9 +57,14 @@ static void free_data ( void )
 	if ( dens_prev ) checkCudaCall(cudaFree( dens_prev ));
 }
 
-__global__ static void clear_data_kernell ( void ) {
+__global__ static void clear_data_kernell ( int size,
+											static float * u, 
+											static float* v, 
+											static float * u_prev, 
+											static float * v_prev,
+											static float * dens, 
+											static float * dens_prev) {
 	uint i = blockIdx.x * blockDim.x + threadIdx.x;
-	int size=(N+2)*(N+2);
 
 	if (i < size){
 		u[i] = v[i] = u_prev[i] = v_prev[i] = dens[i] = dens_prev[i] = 0.0f;
@@ -74,10 +79,9 @@ static void clear_data ( void )
 	dim3 block(128);
     dim3 grid(div_ceil(size, block.x));
 
-    clear_data_kernell<<<grid, block>>>();
+    clear_data_kernell<<<grid, block>>>(size, u, v, u_prev, v_prev, dens, dens_prev);
     checkCudaCall(cudaGetLastError());
     checkCudaCall(cudaDeviceSynchronize());
-
 
 }
 
