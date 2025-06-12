@@ -25,7 +25,7 @@
 
 #include "cuda.h"
 #include "helper_cuda.h"
-#include "cub/cub.cuh"
+
 
 /* macros */
 
@@ -111,56 +111,7 @@ static int allocate_data ( void )
 	cudaMemPrefetchAsync(u_prev,   size * sizeof(float), device_id);
 	cudaMemPrefetchAsync(v,        size * sizeof(float), device_id);
 	cudaMemPrefetchAsync(v_prev,   size * sizeof(float), device_id);
-	cudaMemPrefetchAsync(dens,     size * sizeofstatic void react ( float * d, float * u, float * v )
-{
-	int i, j, size = (N+2)*(N+2);
-
-	float max_velocity2 = 0.0f;
-	float max_density = 0.0f;
-
-	max_velocity2 = max_density = 0.0f;
-	for ( i=0 ; i<size ; i++ ) {
-		if (max_velocity2 < u[i]*u[i] + v[i]*v[i]) {
-			max_velocity2 = u[i]*u[i] + v[i]*v[i];
-		}
-		if (max_density < d[i]) {
-			max_density = d[i];
-		}
-	}
-
-	for ( i=0 ; i<size ; i++ ) {
-		u[i] = v[i] = d[i] = 0.0f;
-	}
-
-	if (max_velocity2<0.0000005f) {
-		u[IX(N/2,N/2)] = force * 10.0f;
-		v[IX(N/2,N/2)] = force * 10.0f;
-	}
-	if (max_density<1.0f) {
-		d[IX(N/2,N/2)] = source * 10.0f;
-	}
-
-	if ( !mouse_down[0] && !mouse_down[2] ) return;
-
-	i = (int)((       mx /(float)win_x)*N+1);
-	j = (int)(((win_y-my)/(float)win_y)*N+1);
-
-	if ( i<1 || i>N || j<1 || j>N ) return;
-
-	if ( mouse_down[0] ) {
-		u[IX(i,j)] = force * (mx-omx);
-		v[IX(i,j)] = force * (omy-my);
-	}
-
-	if ( mouse_down[2] ) {
-		d[IX(i,j)] = source;
-	}
-
-	omx = mx;
-	omy = my;
-
-	return;
-}(float), device_id);
+	cudaMemPrefetchAsync(dens,     size * sizeof(float), device_id);
 	cudaMemPrefetchAsync(dens_prev,size * sizeof(float), device_id);
 
 	if ( !u || !v || !u_prev || !v_prev || !dens || !dens_prev ) {
@@ -253,110 +204,55 @@ static void draw_density ( void )
   ----------------------------------------------------------------------
 */
 
-__global__ void compute_velocity_squared(int size, const float* u, const float* v, float* velocity2) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < size) {
-        float ui = u[i];
-        float vi = v[i];
-        velocity2[i] = ui * ui + vi * vi;
-    }
-}
+static void react ( float * d, float * u, float * v )
+{
+	int i, j, size = (N+2)*(N+2);
 
-__global__ void clear_arrays_kernel(int size, float* u, float* v, float* d) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < size) {
-        u[i] = 0.0f;
-        v[i] = 0.0f;
-        d[i] = 0.0f;
-    }
-}
+	float max_velocity2 = 0.0f;
+	float max_density = 0.0f;
 
-__global__ void inject_center_kernel(float* u, float* v, float* d,
-                                     float max_velocity2, float max_density,
-                                     float force, float source, int center) {
-    if (threadIdx.x == 0 && blockIdx.x == 0) {
-        if (max_velocity2 < 0.0000005f) {
-            float val = force * 10.0f;
-            u[center] = val;
-            v[center] = val;
-        }
-        if (max_density < 1.0f) {
-            float val = source * 10.0f;
-            d[center] = val;
-        }
-    }
-}
+	max_velocity2 = max_density = 0.0f;
+	for ( i=0 ; i<size ; i++ ) {
+		if (max_velocity2 < u[i]*u[i] + v[i]*v[i]) {
+			max_velocity2 = u[i]*u[i] + v[i]*v[i];
+		}
+		if (max_density < d[i]) {
+			max_density = d[i];
+		}
+	}
 
-static void react(float* d, float* u, float* v) {
-    const int size = (N + 2) * (N + 2);
-    dim3 block(128);
-    dim3 grid((size + block.x - 1) / block.x);
+	for ( i=0 ; i<size ; i++ ) {
+		u[i] = v[i] = d[i] = 0.0f;
+	}
 
-    float* d_velocity2;
-    checkCudaCall(cudaMalloc(&d_velocity2, size * sizeof(float)));
+	if (max_velocity2<0.0000005f) {
+		u[IX(N/2,N/2)] = force * 10.0f;
+		v[IX(N/2,N/2)] = force * 10.0f;
+	}
+	if (max_density<1.0f) {
+		d[IX(N/2,N/2)] = source * 10.0f;
+	}
 
+	if ( !mouse_down[0] && !mouse_down[2] ) return;
 
-    compute_velocity_squared<<<grid, block>>>(size, u, v, d_velocity2);
-    checkCudaCall(cudaGetLastError());
-	checkCudaCall(cudaDeviceSynchronize());
+	i = (int)((       mx /(float)win_x)*N+1);
+	j = (int)(((win_y-my)/(float)win_y)*N+1);
 
+	if ( i<1 || i>N || j<1 || j>N ) return;
 
-    void* temp_storage = nullptr;
-    size_t temp_storage_bytes = 0;
-    checkCudaCall(cub::DeviceReduce::Max(nullptr, temp_storage_bytes, d_velocity2, d_velocity2, size));
-    checkCudaCall(cudaMalloc(&temp_storage, temp_storage_bytes));
-    checkCudaCall(cub::DeviceReduce::Max(temp_storage, temp_storage_bytes, d_velocity2, d_velocity2, size));
+	if ( mouse_down[0] ) {
+		u[IX(i,j)] = force * (mx-omx);
+		v[IX(i,j)] = force * (omy-my);
+	}
 
-    float* d_max_density;
-    checkCudaCall(cudaMalloc(&d_max_density, sizeof(float)));
-    void* temp_storage2 = nullptr;
-    size_t temp_storage_bytes2 = 0;
-    checkCudaCall(cub::DeviceReduce::Max(nullptr, temp_storage_bytes2, d, d_max_density, size));
-    checkCudaCall(cudaMalloc(&temp_storage2, temp_storage_bytes2));
-    checkCudaCall(cub::DeviceReduce::Max(temp_storage2, temp_storage_bytes2, d, d_max_density, size));
+	if ( mouse_down[2] ) {
+		d[IX(i,j)] = source;
+	}
 
-    float max_velocity2;
-    float max_density;
-    checkCudaCall(cudaMemcpy(&max_velocity2, d_velocity2, sizeof(float), cudaMemcpyDeviceToHost));
-    checkCudaCall(cudaMemcpy(&max_density, d_max_density, sizeof(float), cudaMemcpyDeviceToHost));
+	omx = mx;
+	omy = my;
 
-    clear_arrays_kernel<<<grid, block>>>(size, u, v, d);
-    checkCudaCall(cudaGetLastError());
-
-    int center = IX(N / 2, N / 2);
-    inject_center_kernel<<<1, 1>>>(u, v, d, max_velocity2, max_density, force, source, center);
-    checkCudaCall(cudaGetLastError());
-	checkCudaCall(cudaDeviceSynchronize());
-
-    if (!mouse_down[0] && !mouse_down[2]) {
-        cudaFree(d_velocity2);
-    	cudaFree(d_max_density);
-    	cudaFree(temp_storage);
-    	cudaFree(temp_storage2);
-		return;
-    }
-
-    int i = (int)((       mx / (float)win_x) * N + 1);
-    int j = (int)(((win_y - my) / (float)win_y) * N + 1);
-    if (i >= 1 && i <= N && j >= 1 && j <= N) {
-        int idx = IX(i, j);
-
-        if (mouse_down[0]) {
-            u[idx] = force * (mx - omx);
-            v[idx] = force * (omy - my);
-        }
-
-        if (mouse_down[2]) {
-            d[idx] = source;
-        }
-    }
-    omx = mx;
-    omy = my;
-
-    cudaFree(d_velocity2);
-    cudaFree(d_max_density);
-    cudaFree(temp_storage);
-    cudaFree(temp_storage2);
+	return;
 }
 
 /*
