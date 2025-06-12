@@ -97,6 +97,13 @@ static int allocate_data ( void )
 	checkCudaCall(cudaMallocManaged(&v_prev, array_size));
 	checkCudaCall(cudaMallocManaged(&dens, array_size));
 	checkCudaCall(cudaMallocManaged(&dens_prev, array_size));
+	
+	cudaMemPrefetchAsync(u,         size*sizeof(float), 0);
+	cudaMemPrefetchAsync(v,         size*sizeof(float), 0);
+	cudaMemPrefetchAsync(u_prev,    size*sizeof(float), 0);
+	cudaMemPrefetchAsync(v_prev,    size*sizeof(float), 0);
+	cudaMemPrefetchAsync(dens,      size*sizeof(float), 0);
+	cudaMemPrefetchAsync(dens_prev, size*sizeof(float), 0);
 
 	if ( !u || !v || !u_prev || !v_prev || !dens || !dens_prev ) {
 		fprintf ( stderr, "cannot allocate data\n" );
