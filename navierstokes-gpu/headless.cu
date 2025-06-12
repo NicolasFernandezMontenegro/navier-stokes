@@ -130,7 +130,6 @@ __global__ void clear_arrays_kernel(int size, float* u, float* v, float* d) {
         v[i] = 0.0f;
         d[i] = 0.0f;
     }
-	checkCudaCall(cudaDeviceSynchronize());
 }
 
 __global__ void inject_center_kernel(float* u, float* v, float* d,
