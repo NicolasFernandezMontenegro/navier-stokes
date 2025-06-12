@@ -81,8 +81,8 @@ __global__ static void lin_solve_rb_step_kernell(grid_color color,
                               const float * __restrict__ neigh,
                               float * __restrict__ same)
 {
-    uint x = blockIdx.x * blockDim.x + threadIdx.x + start;
-    uint y = blockIdx.y * blockDim.y + threadIdx.y + 1;
+    uint x = blockIdx.x * blockDim.x + threadIdx.x;
+    uint y = blockIdx.y * blockDim.y + threadIdx.y;
 
     unsigned int width = (n + 2) / 2;
     unsigned int start = (color == RED && (i%2) || (color == BLACK && ((i+1) % 2)));
