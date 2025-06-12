@@ -32,9 +32,6 @@ __global__ static void add_source_kernell(unsigned int n, float* x, const float*
 
 static void add_source(unsigned int n, float* x, const float* s, float dt)
 {
-    cudaMemPrefetchAsync(x, (n + 2)*(n + 2) * sizeof(float), 0);
-    cudaMemPrefetchAsync(s, (n + 2)*(n + 2) * sizeof(float), 0);
-
     unsigned int size = (n + 2) * (n + 2);
     dim3 block(128);
     dim3 grid(div_ceil(size, block.x));
