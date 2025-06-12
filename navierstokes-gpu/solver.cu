@@ -85,7 +85,7 @@ __global__ static void lin_solve_rb_step_kernell(grid_color color,
     uint y = blockIdx.y * blockDim.y + threadIdx.y;
 
     unsigned int width = (n + 2) / 2;
-    unsigned int start = (color == RED && (i%2) || (color == BLACK && ((i+1) % 2)));
+    unsigned int start = (color == RED && (y % 2) || (color == BLACK && ((y+1) % 2)));
 
     if (y <= n && x < width) {
             int index = idx(x, y, width);
@@ -106,7 +106,7 @@ static void lin_solve(unsigned int n, boundary b,
     const float * blk0 = x0 + color_size;
     float * red = x;
     float * blk = x + color_size;
-    float ic = 1/c
+    float ic = 1/c;
 
     dim3 block(16, 8);
     dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
