@@ -77,7 +77,7 @@ __global__ static void lin_solve_rb_step_kernell(grid_color color,
                               unsigned int n,
                               float a,
                               float ic,
-                              const float * ____restrict____ same0,
+                              const float * __restrict__ same0,
                               const float * __restrict__ neigh,
                               float * __restrict__ same)
 {
