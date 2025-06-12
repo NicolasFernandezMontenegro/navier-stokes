@@ -122,128 +122,178 @@ static void lin_solve(unsigned int n, boundary b,
     }
 }
 
-static void diffuse(unsigned int n, boundary b, float * x, const float * x0, float diff, float dt)
+static void diffuse(unsigned int n, boundary b, float* x, const float* x0, float diff, float dt)
 {
     float a = dt * diff * n * n;
     lin_solve(n, b, x, x0, a, 1 + 4 * a);
 }
 
-__global__ static void advect_kernell(unsigned int n, boundary b, float * d, const float * d0, const float * u, const float * v, float dt)
-{ 
-    int i0, i1, j0, j1;
-    float x, y, s0, t0, s1, t1;
-    float dt0 = dt * n;
 
+__global__ static void advect_rb_step_kernell(grid_color color,
+                          unsigned int n,
+                          float* __restrict__ d,
+                          const float* __restrict__ d0,
+                          const float* __restrict__ u,
+                          const float* __restrict__ v,
+                          float dt)
+    {
+    unsigned int width = (n + 2) / 2;
     unsigned int j = blockIdx.y * blockDim.y + threadIdx.y + 1;
     unsigned int i = blockIdx.x * blockDim.x + threadIdx.x + 1;
 
-    if (i <= n && j <= n){
-        x = i - dt0 * u[IX(i, j)];
-        y = j - dt0 * v[IX(i, j)];
-        if (x < 0.5f) {
-            x = 0.5f;
-        } else if (x > n + 0.5f) {
-            x = n + 0.5f;
+    if (i <= n/2 && j <= n){
+        unsigned int is_odd = (color) ? 1 - (j % 2) : (j % 2);
+        int x_idx = i - is_odd;
+
+        int index = idx(x_idx, j, width);
+
+        float dt0 = dt * n;
+        float x = (2 * i - is_odd) - dt0 * u[index];
+        float y = j - dt0 * v[index];
+
+        x = fmaxf(0.5f, fminf(x, n + 0.5f));
+        y = fmaxf(0.5f, fminf(y, n + 0.5f));
+
+        int i0 = (int)x;
+        int i1 = i0 + 1;
+        int j0 = (int)y;
+        int j1 = j0 + 1;
+
+        float s1 = x - i0;
+        float s0 = 1.0f - s1;
+        float t1 = y - j0;
+        float t0 = 1.0f - t1;
+
+        d[index] =
+            s0 * (t0 * d0[IX(i0, j0)] + t1 * d0[IX(i0, j1)]) +
+            s1 * (t0 * d0[IX(i1, j0)] + t1 * d0[IX(i1, j1)]);
+    }   
+}  
+
+static void advect(unsigned int n, boundary b,
+                       float* __restrict__ d,
+                       const float* __restrict__ d0,
+                       const float* __restrict__ u,
+                       const float* __restrict__ v,
+                       float dt)
+    {
+
+        unsigned int color_size = (n + 2) * ((n + 2) / 2);
+        float* __restrict__ d_Red = d;
+        float* __restrict__ d_Blk = d + color_size;
+        const float* __restrict__ u_Red = u;
+        const float* __restrict__ u_Blk = u + color_size;
+        const float* __restrict__ v_Red = v;
+        const float* __restrict__ v_Blk = v + color_size;
+
+        dim3 block(16, 8);
+        dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
+
+        advect_rb_step_kernell<<<grid, block>>>(RED, n, d_Red, d0, u_Red, v_Red, dt);
+        checkCudaCall(cudaGetLastError());
+        advect_rb_step_kernell<<<grid, block>>>(BLACK, n, d_Blk, d0, u_Blk, v_Blk, dt);
+        checkCudaCall(cudaGetLastError());
+        checkCudaCall(cudaDeviceSynchronize());
+        
+        set_bnd(n, b, d);
+    }
+
+__global__ static void project_rb_step_1_kernell(grid_color color,
+                                  unsigned int n,
+                                  float* __restrict__ u,
+                                  float* __restrict__ v,
+                                  float* __restrict__ div,
+                                  float* __restrict__ p)
+    {
+        uint x = blockIdx.x * blockDim.x + threadIdx.x;
+        uint y = blockIdx.y * blockDim.y + threadIdx.y + 1;
+
+        unsigned int width = (n + 2) / 2;
+        if ((y <= n) && (x < n/2)){
+            int parity = ((y + 1 + (color == BLACK)) % 2);
+            int index = idx(x + parity, y, width);
+            int shift = 1 - 2 * parity;
+
+            float dudx = shift * (u[index + shift] - u[index]);
+            float dvdy = v[index + width] - v[index - width];
+
+            div[index] = -0.5 * (dudx + dvdy) / n;
+            p[index] = 0;
         }
-        i0 = (int) x;
-        i1 = i0 + 1;
-        if (y < 0.5f) {
-            y = 0.5f;
-        } else if (y > n + 0.5f) {
-            y = n + 0.5f;
+    }
+
+__global__ static void project_rb_step_2_kernell(grid_color color,
+                                  unsigned int n,
+                                  float* __restrict__ p,
+                                  float* __restrict__ u,
+                                  float* __restrict__ v)
+    {
+        uint x = blockIdx.x * blockDim.x + threadIdx.x;
+        uint y = blockIdx.y * blockDim.y + threadIdx.y + 1;
+
+        unsigned int width = (n + 2) / 2;
+        if ((y <= n) && (x < n/2)){
+            int parity = ((y + 1 + (color == BLACK)) % 2);
+            int index = idx(x + parity, y, width);
+            int shift = 1 - 2 * parity;
+
+            u[index] -= 0.5 * n * (shift * (p[index + shift] - p[index]));
+            v[index] -= 0.5 * n * (p[index + width] - p[index - width]);
         }
-        j0 = (int) y;
-        j1 = j0 + 1;
-        s1 = x - i0;
-        s0 = 1 - s1;
-        t1 = y - j0;
-        t0 = 1 - t1;
-        d[IX(i, j)] = s0 * (t0 * d0[IX(i0, j0)] + t1 * d0[IX(i0, j1)]) +
-                        s1 * (t0 * d0[IX(i1, j0)] + t1 * d0[IX(i1, j1)]);
     }
-}
 
-static void advect(unsigned int n, boundary b, float * d, const float * d0, const float * u, const float * v, float dt)
-{
-    dim3 block(16, 8);
-    dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
-    advect_kernell<<<grid, block>>>(n, b, d, d0, u, v, dt);
-    checkCudaCall(cudaGetLastError());
-    checkCudaCall(cudaDeviceSynchronize());
+    static void project(unsigned int n, float* __restrict__ u, float* __restrict__ v, float* __restrict__ p, float* __restrict__ div)
+    {  
+        
+        unsigned int color_size = (n + 2) * ((n + 2) / 2);
+        float* red_u = u;
+        float* blk_u = u + color_size;
+        float* red_v = v;
+        float* blk_v = v + color_size;
+        float* red_p = p;
+        float* blk_p = p + color_size;
+        float* red_div = div;
+        float* blk_div = div + color_size;
 
-    set_bnd(n, b, d);
-}
+        dim3 block(16, 8);
+        dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
 
-__global__ static void project_kernell_1(  unsigned int n,
-                                float* __restrict__ u,
-                                float* __restrict__ v,
-                                float* __restrict__ div,
-                                float* __restrict__ p)
-{   
-    unsigned int j = blockIdx.y * blockDim.y + threadIdx.y + 1;
-    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x + 1;
-    if (i <= n && j <= n){
-        div[IX(i, j)] = -0.5f * (u[IX(i + 1, j)] - u[IX(i - 1, j)] +
-                                v[IX(i, j + 1)] - v[IX(i, j - 1)]) / n;
-        p[IX(i, j)] = 0;
+        project_rb_step_1_kernell<<<grid, block>>>(RED, n, blk_u, blk_v, red_div, red_p);
+        project_rb_step_1_kernell<<<grid, block>>>(BLACK, n, red_u, red_v, blk_div, blk_p);
+
+        set_bnd(n, NONE, div);
+        set_bnd(n, NONE, p);
+
+        lin_solve(n, NONE, p, div, 1, 4);
+
+        project_rb_step_2_kernell<<<grid, block>>>(RED, n, blk_p, red_u, red_v);
+        project_rb_step_2_kernell<<<grid, block>>>(BLACK, n, red_p, blk_u, blk_v);
+
+        set_bnd(n, VERTICAL, u);
+        set_bnd(n, HORIZONTAL, v);
     }
-}
 
-__global__ static void project_kernell_2 ( unsigned int n,
-                                float* __restrict__ p,
-                                float* __restrict__ u,
-                                float* __restrict__ v)
-{   
-    unsigned int j = blockIdx.y * blockDim.y + threadIdx.y + 1;
-    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x + 1;
-    if (i <= n && j <= n){
-        u[IX(i, j)] -= 0.5f * n * (p[IX(i + 1, j)] - p[IX(i - 1, j)]);
-        v[IX(i, j)] -= 0.5f * n * (p[IX(i, j + 1)] - p[IX(i, j - 1)]);
+    void dens_step(unsigned int n, float* x, float* x0, float* u, float* v, float diff, float dt)
+    {
+        add_source(n, x, x0, dt);
+        SWAP(x0, x);
+        diffuse(n, NONE, x, x0, diff, dt);
+        SWAP(x0, x);
+        advect(n, NONE, x, x0, u, v, dt);
     }
-}
 
-static void project(unsigned int n, float *u, float *v, float *p, float *div)
-{   
-    dim3 block(16, 8);
-    dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
-
-    project_kernell_1<<<grid, block>>>(n, u, v, div, p);
-    checkCudaCall(cudaGetLastError());
-    checkCudaCall(cudaDeviceSynchronize());
-
-    set_bnd(n, NONE, div);
-    set_bnd(n, NONE, p);
-
-    lin_solve(n, NONE, p, div, 1, 4);
-
-    project_kernell_2<<<grid, block>>>(n, p, u, v);
-    checkCudaCall(cudaGetLastError());
-    checkCudaCall(cudaDeviceSynchronize());
-    set_bnd(n, VERTICAL, u);
-    set_bnd(n, HORIZONTAL, v);
-}
-
-void dens_step(unsigned int n, float *x, float *x0, float *u, float *v, float diff, float dt)
-{
-    add_source(n, x, x0, dt);
-    SWAP(x0, x);
-    diffuse(n, NONE, x, x0, diff, dt);
-    SWAP(x0, x);
-    advect(n, NONE, x, x0, u, v, dt);
-}
-
-void vel_step(unsigned int n, float *u, float *v, float *u0, float *v0, float visc, float dt)
-{
-    add_source(n, u, u0, dt);
-    add_source(n, v, v0, dt);
-    SWAP(u0, u);
-    diffuse(n, VERTICAL, u, u0, visc, dt);
-    SWAP(v0, v);
-    diffuse(n, HORIZONTAL, v, v0, visc, dt);
-    project(n, u, v, u0, v0);
-    SWAP(u0, u);
-    SWAP(v0, v);
-    advect(n, VERTICAL, u, u0, u0, v0, dt);
-    advect(n, HORIZONTAL, v, v0, u0, v0, dt);
-    project(n, u, v, u0, v0);
-}
+    void vel_step(unsigned int n, float* u, float* v, float* u0, float* v0, float visc, float dt)
+    {
+        add_source(n, u, u0, dt);
+        add_source(n, v, v0, dt);
+        SWAP(u0, u);
+        diffuse(n, VERTICAL, u, u0, visc, dt);
+        SWAP(v0, v);
+        diffuse(n, HORIZONTAL, v, v0, visc, dt);
+        project(n, u, v, u0, v0);
+        SWAP(u0, u);
+        SWAP(v0, v);
+        advect(n, VERTICAL, u, u0, u0, v0, dt);
+        advect(n, HORIZONTAL, v, v0, u0, v0, dt);
+        project(n, u, v, u0, v0);
+    }
