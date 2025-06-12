@@ -40,6 +40,13 @@ static float force, source;
 static float * u, * v, * u_prev, * v_prev;
 static float * dens, * dens_prev;
 
+struct ReactBuffers {
+    float*  d_velocity2;
+    float*  d_max_density;
+    void*   temp_storage;     // Un único buffer temporal
+    size_t  temp_bytes;       // Tamaño en bytes de temp_storage
+};
+
 
 /*
   ----------------------------------------------------------------------
@@ -114,8 +121,6 @@ static int allocate_data ( void )
 	return ( 1 );
 }
 
-
-
 __global__ void compute_velocity_squared(int size, const float* u, const float* v, float* velocity2) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < size) {
@@ -161,8 +166,6 @@ static void react(float* d, float* u, float* v) {
 
     compute_velocity_squared<<<grid, block>>>(size, u, v, d_velocity2);
     checkCudaCall(cudaGetLastError());
-	checkCudaCall(cudaDeviceSynchronize());
-
 
     void* temp_storage = nullptr;
     size_t temp_storage_bytes = 0;
@@ -182,14 +185,13 @@ static void react(float* d, float* u, float* v) {
     float max_density;
     checkCudaCall(cudaMemcpy(&max_velocity2, d_velocity2, sizeof(float), cudaMemcpyDeviceToHost));
     checkCudaCall(cudaMemcpy(&max_density, d_max_density, sizeof(float), cudaMemcpyDeviceToHost));
-
+	
     clear_arrays_kernel<<<grid, block>>>(size, u, v, d);
     checkCudaCall(cudaGetLastError());
 
     int center = IX(N / 2, N / 2);
     inject_center_kernel<<<1, 1>>>(u, v, d, max_velocity2, max_density, force, source, center);
     checkCudaCall(cudaGetLastError());
-	checkCudaCall(cudaDeviceSynchronize());
 
     cudaFree(d_velocity2);
     cudaFree(d_max_density);
@@ -217,6 +219,8 @@ static void one_step ( void )
 	start_t = wtime();
 	dens_step ( N, dens, dens_prev, u, v, diff, dt );
 	dens_ns_p_cell += 1.0e9 * (wtime()-start_t)/(N*N);
+
+	cudaDeviceSynchronize();
 
 	if (1.0<wtime()-one_second) { /* at least 1s between stats */
 		printf("%lf, %lf, %lf, %lf: ns per cell total, react, vel_step, dens_step\n",

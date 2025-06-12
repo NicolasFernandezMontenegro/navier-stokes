@@ -273,7 +273,6 @@ __global__ static void project_rb_step_2_kernell(grid_color color,
         SWAP(x0, x);
         advect(n, NONE, x, x0, u, v, dt);
 
-        checkCudaCall(cudaDeviceSynchronize());   
     }
 
     void vel_step(unsigned int n, float* u, float* v, float* u0, float* v0, float visc, float dt)
@@ -290,6 +289,4 @@ __global__ static void project_rb_step_2_kernell(grid_color color,
         advect(n, VERTICAL, u, u0, u0, v0, dt);
         advect(n, HORIZONTAL, v, v0, u0, v0, dt);
         project(n, u, v, u0, v0);
-
-        checkCudaCall(cudaDeviceSynchronize());   
     }
