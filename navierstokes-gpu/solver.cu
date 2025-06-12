@@ -161,7 +161,6 @@ __global__ static void advect_kernell(unsigned int n, boundary b, float * d, con
         d[IX(i, j)] = s0 * (t0 * d0[IX(i0, j0)] + t1 * d0[IX(i0, j1)]) +
                         s1 * (t0 * d0[IX(i1, j0)] + t1 * d0[IX(i1, j1)]);
     }
-    set_bnd(n, b, d);
 }
 
 static void advect(unsigned int n, boundary b, float * d, const float * d0, const float * u, const float * v, float dt)
@@ -171,6 +170,8 @@ static void advect(unsigned int n, boundary b, float * d, const float * d0, cons
     advect_kernell<<<grid, block>>>(n, b, d, d0, u, v, dt);
     checkCudaCall(cudaGetLastError());
     checkCudaCall(cudaDeviceSynchronize());
+
+    set_bnd(n, b, d);
 }
 
 static void project(unsigned int n, float *u, float *v, float *p, float *div)
