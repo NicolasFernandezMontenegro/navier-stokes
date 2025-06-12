@@ -108,7 +108,7 @@ static int allocate_data ( void )
 	checkCudaCall(cudaMallocManaged(&u_prev, array_size));
 	checkCudaCall(cudaMallocManaged(&v_prev, array_size));
 	checkCudaCall(cudaMallocManaged(&dens, array_size));
-	checkCudaCall(cudaMallocManaged(&dens_prev, array_size))
+	checkCudaCall(cudaMallocManaged(&dens_prev, array_size));
 	checkCudaCall(cudaMalloc(&d_velocity2, array_size));
 	checkCudaCall(cudaMalloc(&d_max_density, array_size));;
 
