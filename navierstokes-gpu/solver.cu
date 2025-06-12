@@ -105,25 +105,15 @@ static void lin_solve(unsigned int n, boundary b,
     dim3 block(16, 8);
     dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
 
-    cudaStream_t stream_red, stream_black;
-    checkCudaCall(cudaStreamCreate(&stream_red));
-    checkCudaCall(cudaStreamCreate(&stream_black));
-
     for (unsigned int k = 0; k < 20; ++k) {
-        lin_solve_rb_step_kernell<<<grid, block, 0, stream_red>>>(RED, n, width, a, c, red0, blk, red);
+        lin_solve_rb_step_kernell<<<grid, block>>>(RED, n, width, a, c, red0, blk, red);
         checkCudaCall(cudaGetLastError());
-        lin_solve_rb_step_kernell<<<grid, block, 0, stream_black>>>(BLACK, n, width, a, c, blk0, red, blk);
+        
+        lin_solve_rb_step_kernell<<<grid, block>>>(BLACK, n, width, a, c, blk0, red, blk);
         checkCudaCall(cudaGetLastError());
-
-        // Sincronizar ambos streams
-        checkCudaCall(cudaStreamSynchronize(stream_red));
-        checkCudaCall(cudaStreamSynchronize(stream_black));
 
         set_bnd(n, b, x);
     }
-    // Liberar recursos
-    checkCudaCall(cudaStreamDestroy(stream_red));
-    checkCudaCall(cudaStreamDestroy(stream_black));
 }
 
 static void diffuse(unsigned int n, boundary b, float* x, const float* x0, float diff, float dt)

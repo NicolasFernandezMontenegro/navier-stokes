@@ -104,13 +104,6 @@ static int allocate_data ( void )
 	checkCudaCall(cudaMalloc(&v_prev, array_size));
 	checkCudaCall(cudaMalloc(&dens, array_size));
 	checkCudaCall(cudaMalloc(&dens_prev, array_size));
-	
-	//cudaMemPrefetchAsync(u,         size*sizeof(float), 0);
-	//cudaMemPrefetchAsync(v,         size*sizeof(float), 0);
-	//cudaMemPrefetchAsync(u_prev,    size*sizeof(float), 0);
-	//cudaMemPrefetchAsync(v_prev,    size*sizeof(float), 0);
-	//cudaMemPrefetchAsync(dens,      size*sizeof(float), 0);
-	//cudaMemPrefetchAsync(dens_prev, size*sizeof(float), 0);
 
 	if ( !u || !v || !u_prev || !v_prev || !dens || !dens_prev ) {
 		fprintf ( stderr, "cannot allocate data\n" );
@@ -128,6 +121,16 @@ __global__ void compute_velocity_squared(int size, const float* u, const float* 
         velocity2[i] = ui * ui + vi * vi;
     }
 }
+
+__global__ void clear_arrays_kernel(int size, float* u, float* v, float* d) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < size) {
+        u[i] = 0.0f;
+        v[i] = 0.0f;
+        d[i] = 0.0f;
+    }
+}
+
 __global__ void inject_center_kernel(float* u, float* v, float* d,
                                      float* max_velocity2, float* max_density,
                                      float force, float source, int center) {
@@ -170,10 +173,8 @@ static void react(float* d, float* u, float* v) {
     checkCudaCall(cudaMalloc(&temp_storage2, temp_storage_bytes2));
     checkCudaCall(cub::DeviceReduce::Max(temp_storage2, temp_storage_bytes2, d, d_max_density, size));
 
-    checkCudaCall(cudaMemset(d, 0, size * sizeof(float)));
-    checkCudaCall(cudaMemset(u, 0, size * sizeof(float)));
-    checkCudaCall(cudaMemset(v, 0, size * sizeof(float)));
-
+    clear_arrays_kernel<<<grid, block>>>(size, u, v, d);
+    checkCudaCall(cudaGetLastError());
 
     int center = IX(N / 2, N / 2);
     inject_center_kernel<<<1, 1>>>(u, v, d, d_velocity2, d_max_density, force, source, center);
