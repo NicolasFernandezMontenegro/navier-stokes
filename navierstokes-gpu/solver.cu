@@ -174,7 +174,7 @@ static void advect(unsigned int n, boundary b, float * d, const float * d0, cons
     set_bnd(n, b, d);
 }
 
-static void project_kernell_1(  unsigned int n,
+__global__ static void project_kernell_1(  unsigned int n,
                                 float* __restrict__ u,
                                 float* __restrict__ v,
                                 float* __restrict__ div,
@@ -189,7 +189,7 @@ static void project_kernell_1(  unsigned int n,
     }
 }
 
-static void project_kernell_2 ( unsigned int n,
+__global__ static void project_kernell_2 ( unsigned int n,
                                 float* __restrict__ p,
                                 float* __restrict__ u,
                                 float* __restrict__ v)
