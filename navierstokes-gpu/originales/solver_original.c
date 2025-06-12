@@ -1,98 +1,57 @@
-#include <assert.h>
-#include <cmath>
-#include "indices.h"
+#include <stddef.h>
+
 #include "solver.h"
+#include "indices.h"
 
-#include "cuda.h"
-#include "helper_cuda.h"
+#define IX(x,y) (rb_idx((x),(y),(n+2)))
+#define SWAP(x0,x) {float * tmp=x0;x0=x;x=tmp;}
 
-#define IX(x, y) (rb_idx((x), (y), (n + 2)))
-#define IX_FLAT(x, y) ((x) + (n + 2) * (y))
-#define SWAP(x0, x)      \
-    {                    \
-        float* tmp = x0; \
-        x0 = x;          \
-        x = tmp;         \
-    }
+typedef enum { NONE = 0, VERTICAL = 1, HORIZONTAL = 2 } boundary;
+typedef enum { RED, BLACK } grid_color;
 
-typedef enum { NONE = 0,
-               VERTICAL = 1,
-               HORIZONTAL = 2 } boundary;
-typedef enum { RED,
-               BLACK } grid_color;
-
-__global__ static void add_source_kernell(unsigned int n, float* x, const float* s, float dt)
+static void add_source(unsigned int n, float * x, const float * s, float dt)
 {
-    uint i = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int size = (n + 2) * (n + 2);
-    if (i < size){
-         x[i] += dt * s[i];
+    for (unsigned int i = 0; i < size; i++) {
+        x[i] += dt * s[i];
     }
 }
 
-static void add_source(unsigned int n, float* x, const float* s, float dt)
+static void set_bnd(unsigned int n, boundary b, float * x)
 {
-    cudaMemPrefetchAsync(x, (n + 2)*(n + 2) * sizeof(float), 0);
-    cudaMemPrefetchAsync(s, (n + 2)*(n + 2) * sizeof(float), 0);
-
-    unsigned int size = (n + 2) * (n + 2);
-    dim3 block(128);
-    dim3 grid(div_ceil(size, block.x));
-
-    add_source_kernell<<<grid, block>>>(n, x, s, dt);
-    checkCudaCall(cudaGetLastError());
-    checkCudaCall(cudaDeviceSynchronize());    
-
-}
-
-__global__ static void set_bnd_kernell(unsigned int n, boundary b, float* x)
-{
-    uint i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (0 < i && i <= n){
-        x[IX(0, i)] = b == VERTICAL ? -x[IX(1, i)] : x[IX(1, i)];
+    for (unsigned int i = 1; i <= n; i++) {
+        x[IX(0, i)]     = b == VERTICAL ? -x[IX(1, i)] : x[IX(1, i)];
         x[IX(n + 1, i)] = b == VERTICAL ? -x[IX(n, i)] : x[IX(n, i)];
-        x[IX(i, 0)] = b == HORIZONTAL ? -x[IX(i, 1)] : x[IX(i, 1)];
+        x[IX(i, 0)]     = b == HORIZONTAL ? -x[IX(i, 1)] : x[IX(i, 1)];
         x[IX(i, n + 1)] = b == HORIZONTAL ? -x[IX(i, n)] : x[IX(i, n)];
     }
-    __syncthreads();
-    if (i == 0){
-        x[IX(0, 0)] = 0.5f * (x[IX(1, 0)] + x[IX(0, 1)]);
-        x[IX(0, n + 1)] = 0.5f * (x[IX(1, n + 1)] + x[IX(0, n)]);
-        x[IX(n + 1, 0)] = 0.5f * (x[IX(n, 0)] + x[IX(n + 1, 1)]);
-        x[IX(n + 1, n + 1)] = 0.5f * (x[IX(n, n + 1)] + x[IX(n + 1, n)]);
-    }
+    x[IX(0, 0)]         = 0.5f * (x[IX(1, 0)]     + x[IX(0, 1)]);
+    x[IX(0, n + 1)]     = 0.5f * (x[IX(1, n + 1)] + x[IX(0, n)]);
+    x[IX(n + 1, 0)]     = 0.5f * (x[IX(n, 0)]     + x[IX(n + 1, 1)]);
+    x[IX(n + 1, n + 1)] = 0.5f * (x[IX(n, n + 1)] + x[IX(n + 1, n)]);
 }
 
-static void set_bnd(unsigned int n, boundary b, float* x)
-{
-    dim3 block(128);
-    dim3 grid(div_ceil(n-2, block.x));
-
-    set_bnd_kernell<<<grid, block>>>(n, b, x);
-    checkCudaCall(cudaGetLastError());
-    checkCudaCall(cudaDeviceSynchronize());
-}
-
-__global__ static void lin_solve_rb_step_kernell(grid_color color,
+static void lin_solve_rb_step(grid_color color,
                               unsigned int n,
                               float a,
-                              float ic,
+                              float c,
                               const float * restrict same0,
                               const float * restrict neigh,
                               float * restrict same)
 {
-    uint x = blockIdx.x * blockDim.x + threadIdx.x + start;
-    uint y = blockIdx.y * blockDim.y + threadIdx.y + 1;
+    int shift = color == RED ? 1 : -1;
+    unsigned int start = color == RED ? 0 : 1;
 
     unsigned int width = (n + 2) / 2;
-    unsigned int start = (color == RED && (i%2) || (color == BLACK && ((i+1) % 2)));
 
-    if (y <= n && x < width) {
+    for (unsigned int y = 1; y <= n; ++y, shift = -shift, start = 1 - start) {
+        for (unsigned int x = start; x < width - (1 - start); ++x) {
             int index = idx(x, y, width);
             same[index] = (same0[index] + a * (neigh[index - width] +
                                                neigh[index] +
                                                neigh[index + shift] +
                                                neigh[index + width])) / c;
+        }
     }
 }
 
@@ -106,18 +65,10 @@ static void lin_solve(unsigned int n, boundary b,
     const float * blk0 = x0 + color_size;
     float * red = x;
     float * blk = x + color_size;
-    float ic = 1/c
-
-    dim3 block(16, 8);
-    dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
 
     for (unsigned int k = 0; k < 20; ++k) {
-        lin_solve_rb_step_kernell<<<grid, block>>>(RED, n, a, ic, red0, blk, red);
-        checkCudaCall(cudaGetLastError());
-
-        lin_solve_rb_step_kernell<<<grid, block>>>(BLACK, n, a, ic, blk0, red, blk);
-        checkCudaCall(cudaGetLastError());
-        checkCudaCall(cudaDeviceSynchronize());
+        lin_solve_rb_step(RED,   n, a, c, red0, blk, red);
+        lin_solve_rb_step(BLACK, n, a, c, blk0, red, blk);
         set_bnd(n, b, x);
     }
 }
