@@ -191,7 +191,7 @@ static void advect(unsigned int n, boundary b,
 
         advect_rb_step_kernell<<<grid, block, 0, stream_black>>>(RED, n, d_Red, d0, u_Red, v_Red, dt);
         checkCudaCall(cudaGetLastError());
-        advect_rb_step_kernell<<<grid, block, 0 stream_red>>>(BLACK, n, d_Blk, d0, u_Blk, v_Blk, dt);
+        advect_rb_step_kernell<<<grid, block, 0, stream_red>>>(BLACK, n, d_Blk, d0, u_Blk, v_Blk, dt);
         checkCudaCall(cudaGetLastError());
 
         // Sincronizar ambos streams
