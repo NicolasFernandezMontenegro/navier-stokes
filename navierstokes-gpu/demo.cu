@@ -249,7 +249,7 @@ static void react(float* d, float* u, float* v) {
 
     compute_velocity_squared<<<grid, block>>>(size, u, v, d_velocity2);
     checkCudaCall(cudaGetLastError());
-	checkCudaCall(cudaDeviceSynchronize());
+	//checkCudaCall(cudaDeviceSynchronize());
 
 
     void* temp_storage = nullptr;
@@ -277,7 +277,7 @@ static void react(float* d, float* u, float* v) {
     int center = IX(N / 2, N / 2);
     inject_center_kernel<<<1, 1>>>(u, v, d, max_velocity2, max_density, force, source, center);
     checkCudaCall(cudaGetLastError());
-	checkCudaCall(cudaDeviceSynchronize());
+	//checkCudaCall(cudaDeviceSynchronize());
 
     if (!mouse_down[0] && !mouse_down[2]) {
         cudaFree(d_velocity2);
@@ -375,6 +375,8 @@ static void idle_func ( void )
 	react ( dens_prev, u_prev, v_prev );
 	react_ns_p_cell += 1.0e9 * (wtime()-start_t)/(N*N);
 
+	checkCudaCall(cudaDeviceSynchronize());
+
 	start_t = wtime();
 	vel_step ( N, u, v, u_prev, v_prev, visc, dt );
 	vel_ns_p_cell += 1.0e9 * (wtime()-start_t)/(N*N);
@@ -382,6 +384,7 @@ static void idle_func ( void )
 	start_t = wtime();
 	dens_step ( N, dens, dens_prev, u, v, diff, dt );
 	dens_ns_p_cell += 1.0e9 * (wtime()-start_t)/(N*N);
+
 
 	if (1.0<wtime()-one_second) { /* at least 1s between stats */
 		printf("%lf, %lf, %lf, %lf: ns per cell total, react, vel_step, dens_step\n",
