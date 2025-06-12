@@ -137,7 +137,7 @@ __global__ static void advect_kernell(unsigned int n, boundary b, float * d, con
     unsigned int j = blockIdx.y * blockDim.y + threadIdx.y + 1;
     unsigned int i = blockIdx.x * blockDim.x + threadIdx.x + 1;
 
-    if (i <= n/2 && j <= n){
+    if (i <= n && j <= n){
         x = i - dt0 * u[IX(i, j)];
         y = j - dt0 * v[IX(i, j)];
         if (x < 0.5f) {
@@ -174,26 +174,51 @@ static void advect(unsigned int n, boundary b, float * d, const float * d0, cons
     set_bnd(n, b, d);
 }
 
-static void project(unsigned int n, float *u, float *v, float *p, float *div)
-{
-    for (unsigned int i = 1; i <= n; i++) {
-        for (unsigned int j = 1; j <= n; j++) {
-            div[IX(i, j)] = -0.5f * (u[IX(i + 1, j)] - u[IX(i - 1, j)] +
-                                     v[IX(i, j + 1)] - v[IX(i, j - 1)]) / n;
-            p[IX(i, j)] = 0;
-        }
+static void project_kernell_1(  unsigned int n,
+                                float* __restrict__ u,
+                                float* __restrict__ v,
+                                float* __restrict__ div,
+                                float* __restrict__ p)
+{   
+    unsigned int j = blockIdx.y * blockDim.y + threadIdx.y + 1;
+    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x + 1;
+    if (i <= n && j <= n){
+        div[IX(i, j)] = -0.5f * (u[IX(i + 1, j)] - u[IX(i - 1, j)] +
+                                v[IX(i, j + 1)] - v[IX(i, j - 1)]) / n;
+        p[IX(i, j)] = 0;
     }
+}
+
+static void project_kernell_2 ( unsigned int n,
+                                float* __restrict__ p,
+                                float* __restrict__ u,
+                                float* __restrict__ v)
+{   
+    uint x = blockIdx.x * blockDim.x + threadIdx.x + 1;
+    uint y = blockIdx.y * blockDim.y + threadIdx.y + 1;
+    if (i <= n && j <= n){
+        u[IX(i, j)] -= 0.5f * n * (p[IX(i + 1, j)] - p[IX(i - 1, j)]);
+        v[IX(i, j)] -= 0.5f * n * (p[IX(i, j + 1)] - p[IX(i, j - 1)]);
+    }
+}
+
+static void project(unsigned int n, float *u, float *v, float *p, float *div)
+{   
+    dim3 block(16, 8);
+    dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
+
+    project_kernell_1<<<grid, block>>>(n, u, v, div, p);
+    checkCudaCall(cudaGetLastError());
+    checkCudaCall(cudaDeviceSynchronize());
+
     set_bnd(n, NONE, div);
     set_bnd(n, NONE, p);
 
     lin_solve(n, NONE, p, div, 1, 4);
 
-    for (unsigned int i = 1; i <= n; i++) {
-        for (unsigned int j = 1; j <= n; j++) {
-            u[IX(i, j)] -= 0.5f * n * (p[IX(i + 1, j)] - p[IX(i - 1, j)]);
-            v[IX(i, j)] -= 0.5f * n * (p[IX(i, j + 1)] - p[IX(i, j - 1)]);
-        }
-    }
+    project_kernell_2<<<grid, block>>>(n, p, u, v);
+    checkCudaCall(cudaGetLastError());
+    checkCudaCall(cudaDeviceSynchronize());
     set_bnd(n, VERTICAL, u);
     set_bnd(n, HORIZONTAL, v);
 }
