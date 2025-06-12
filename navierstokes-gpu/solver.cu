@@ -194,8 +194,8 @@ __global__ static void project_kernell_2 ( unsigned int n,
                                 float* __restrict__ u,
                                 float* __restrict__ v)
 {   
-    uint x = blockIdx.x * blockDim.x + threadIdx.x + 1;
-    uint y = blockIdx.y * blockDim.y + threadIdx.y + 1;
+    unsigned int j = blockIdx.y * blockDim.y + threadIdx.y + 1;
+    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x + 1;
     if (i <= n && j <= n){
         u[IX(i, j)] -= 0.5f * n * (p[IX(i + 1, j)] - p[IX(i - 1, j)]);
         v[IX(i, j)] -= 0.5f * n * (p[IX(i, j + 1)] - p[IX(i, j - 1)]);
