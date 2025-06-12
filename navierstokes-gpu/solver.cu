@@ -85,8 +85,8 @@ __global__ static void lin_solve_rb_step_kernell( unsigned int n,
     if ((y <= n) && (x < n/2)){
         // RED pass
         int parity_r = ((y + 1 + (0)) % 2);
-        int index_r = idx(x + parity, y, width);
-        int shift_r = 1 - 2 * parity;
+        int index_r = idx(x + parity_r, y, width);
+        int shift_r = 1 - 2 * parity_r;
 
         red[index_r] = (red0[index_r] + a * (blk[index_r - width] 
                                         + blk[index_r] 
@@ -97,8 +97,8 @@ __global__ static void lin_solve_rb_step_kernell( unsigned int n,
 
         // Black pass
         int parity_b = ((y + 1 + (1)) % 2);
-        int index_b = idx(x + parity, y, width);
-        int shift_b = 1 - 2 * parity;
+        int index_b = idx(x + parity_b, y, width);
+        int shift_b = 1 - 2 * parity_b;
 
         blk[index_b] = (blk0[index_b] + a * (red[index_b - width] 
                                         + red[index_b] 
