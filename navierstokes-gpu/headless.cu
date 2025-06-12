@@ -89,8 +89,6 @@ static void clear_data ( void )
 
     clear_data_kernell<<<grid, block>>>(size, u, v, u_prev, v_prev, dens, dens_prev);
     checkCudaCall(cudaGetLastError());
-	checkCudaCall(cudaDeviceSynchronize());
-
 }
 
 static int allocate_data ( void )
