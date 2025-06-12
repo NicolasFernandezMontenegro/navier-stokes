@@ -21,6 +21,10 @@ typedef enum { NONE = 0,
 typedef enum { RED,
                BLACK } grid_color;
 
+// globales
+cudaStream_t stream_red;
+cudaStream_t stream_black;
+
 __global__ static void add_source_kernell(unsigned int n, float* x, const float* s, float dt)
 {
     uint i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -106,10 +110,14 @@ static void lin_solve(unsigned int n, boundary b,
     dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
 
     for (unsigned int k = 0; k < 20; ++k) {
-        lin_solve_rb_step_kernell<<<grid, block>>>(RED, n, width, a, c, red0, blk, red);
+        lin_solve_rb_step_kernell<<<grid, block, 0, stream_red>>>(RED, n, width, a, c, red0, blk, red);
         checkCudaCall(cudaGetLastError());
-        lin_solve_rb_step_kernell<<<grid, block>>>(BLACK, n, width, a, c, blk0, red, blk);
+        lin_solve_rb_step_kernell<<<grid, block, 0, stream_black>>>(BLACK, n, width, a, c, blk0, red, blk);
         checkCudaCall(cudaGetLastError());
+
+        // Sincronizar ambos streams
+        checkCudaCall(cudaStreamSynchronize(stream_red));
+        checkCudaCall(cudaStreamSynchronize(stream_black));
 
         set_bnd(n, b, x);
     }
@@ -143,7 +151,6 @@ __global__ static void advect_rb_step_kernell(grid_color color,
         float dt0 = dt * n;
         float x = (2 * i - is_odd) - dt0 * u[index];
         float y = j - dt0 * v[index];
-
         x = fmaxf(0.5f, fminf(x, n + 0.5f));
         y = fmaxf(0.5f, fminf(y, n + 0.5f));
 
@@ -182,10 +189,14 @@ static void advect(unsigned int n, boundary b,
         dim3 block(16, 8);
         dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
 
-        advect_rb_step_kernell<<<grid, block>>>(RED, n, d_Red, d0, u_Red, v_Red, dt);
+        advect_rb_step_kernell<<<grid, block, 0, stream_black>>>(RED, n, d_Red, d0, u_Red, v_Red, dt);
         checkCudaCall(cudaGetLastError());
-        advect_rb_step_kernell<<<grid, block>>>(BLACK, n, d_Blk, d0, u_Blk, v_Blk, dt);
+        advect_rb_step_kernell<<<grid, block, 0, stream_red>>>(BLACK, n, d_Blk, d0, u_Blk, v_Blk, dt);
         checkCudaCall(cudaGetLastError());
+
+        // Sincronizar ambos streams
+        checkCudaCall(cudaStreamSynchronize(stream_red));
+        checkCudaCall(cudaStreamSynchronize(stream_black));
         
         set_bnd(n, b, d);
     }
@@ -250,33 +261,52 @@ __global__ static void project_rb_step_2_kernell(grid_color color,
         dim3 block(16, 8);
         dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
 
-        project_rb_step_1_kernell<<<grid, block>>>(RED, n, blk_u, blk_v, red_div, red_p);
-        project_rb_step_1_kernell<<<grid, block>>>(BLACK, n, red_u, red_v, blk_div, blk_p);
+        project_rb_step_1_kernell<<<grid, block, 0, stream_red>>>(RED, n, blk_u, blk_v, red_div, red_p);
+        project_rb_step_1_kernell<<<grid, block, 0, stream_black>>>(BLACK, n, red_u, red_v, blk_div, blk_p);
+
+        // Sincronizar ambos streams
+        checkCudaCall(cudaStreamSynchronize(stream_red));
+        checkCudaCall(cudaStreamSynchronize(stream_black));
 
         set_bnd(n, NONE, div);
         set_bnd(n, NONE, p);
 
         lin_solve(n, NONE, p, div, 1, 4);
 
-        project_rb_step_2_kernell<<<grid, block>>>(RED, n, blk_p, red_u, red_v);
-        project_rb_step_2_kernell<<<grid, block>>>(BLACK, n, red_p, blk_u, blk_v);
+        project_rb_step_2_kernell<<<grid, block, 0, stream_red>>>(RED, n, blk_p, red_u, red_v);
+        project_rb_step_2_kernell<<<grid, block, 0, stream_black>>>(BLACK, n, red_p, blk_u, blk_v);
+
+        // Sincronizar ambos streams
+        checkCudaCall(cudaStreamSynchronize(stream_red));
+        checkCudaCall(cudaStreamSynchronize(stream_black));
 
         set_bnd(n, VERTICAL, u);
         set_bnd(n, HORIZONTAL, v);
     }
 
     void dens_step(unsigned int n, float* x, float* x0, float* u, float* v, float diff, float dt)
-    {
+    {   
+        // al inicio
+        cudaStreamCreate(&stream_red);
+        cudaStreamCreate(&stream_black);
+
         add_source(n, x, x0, dt);
         SWAP(x0, x);
         diffuse(n, NONE, x, x0, diff, dt);
         SWAP(x0, x);
         advect(n, NONE, x, x0, u, v, dt);
 
+        cudaStreamDestroy(stream_red);
+        cudaStreamDestroy(stream_black);
+
     }
 
     void vel_step(unsigned int n, float* u, float* v, float* u0, float* v0, float visc, float dt)
-    {
+    {   
+                // al inicio
+        cudaStreamCreate(&stream_red);
+        cudaStreamCreate(&stream_black);
+
         add_source(n, u, u0, dt);
         add_source(n, v, v0, dt);
         SWAP(u0, u);
@@ -289,4 +319,7 @@ __global__ static void project_rb_step_2_kernell(grid_color color,
         advect(n, VERTICAL, u, u0, u0, v0, dt);
         advect(n, HORIZONTAL, v, v0, u0, v0, dt);
         project(n, u, v, u0, v0);
+
+        cudaStreamDestroy(stream_red);
+        cudaStreamDestroy(stream_black);
     }
