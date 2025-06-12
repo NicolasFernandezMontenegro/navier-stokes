@@ -151,7 +151,6 @@ __global__ static void advect_rb_step_kernell(grid_color color,
         float dt0 = dt * n;
         float x = (2 * i - is_odd) - dt0 * u[index];
         float y = j - dt0 * v[index];
-red_stream
         x = fmaxf(0.5f, fminf(x, n + 0.5f));
         y = fmaxf(0.5f, fminf(y, n + 0.5f));
 
