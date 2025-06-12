@@ -383,7 +383,7 @@ static void idle_func ( void )
 	dens_step ( N, dens, dens_prev, u, v, diff, dt );
 	dens_ns_p_cell += 1.0e9 * (wtime()-start_t)/(N*N);
 
-	checkCudaCall(cudaDeviceSynchronize());
+	//checkCudaCall(cudaDeviceSynchronize());
 
 	if (1.0<wtime()-one_second) { /* at least 1s between stats */
 		printf("%lf, %lf, %lf, %lf: ns per cell total, react, vel_step, dens_step\n",
