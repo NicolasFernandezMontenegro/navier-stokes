@@ -39,6 +39,7 @@ static float force, source;
 
 static float * u, * v, * u_prev, * v_prev;
 static float * dens, * dens_prev;
+static float * d_velocity2, *d_max_density;
 
 /*
   ----------------------------------------------------------------------
@@ -55,6 +56,8 @@ static void free_data ( void )
 	if ( v_prev ) checkCudaCall(cudaFree( v_prev ));
 	if ( dens ) checkCudaCall(cudaFree( dens ));
 	if ( dens_prev ) checkCudaCall(cudaFree( dens_prev ));
+	if ( d_velocity2 ) checkCudaCall(cudaFree( d_velocity2 ));
+	if ( d_max_density ) checkCudaCall(cudaFree( d_max_density ));
 }
 
 __global__ static void clear_data_kernell ( int size,
@@ -63,11 +66,14 @@ __global__ static void clear_data_kernell ( int size,
 											float * u_prev, 
 											float * v_prev,
 											float * dens, 
-											float * dens_prev) {
+											float * dens_prev,
+											float * d_velocity2,
+											float * d_max_density
+											) {
 	uint i = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if (i < size){
-		u[i] = v[i] = u_prev[i] = v_prev[i] = dens[i] = dens_prev[i] = 0.0f;
+		u[i] = v[i] = u_prev[i] = v_prev[i] = dens[i] = dens_prev[i] = d_velocity2[i] = d_max_density[i] = 0.0f;
 	}
 
 }
@@ -79,7 +85,7 @@ static void clear_data ( void )
 	dim3 block(128);
     dim3 grid(div_ceil(size, block.x));
 
-    clear_data_kernell<<<grid, block>>>(size, u, v, u_prev, v_prev, dens, dens_prev);
+    clear_data_kernell<<<grid, block>>>(size, u, v, u_prev, v_prev, dens, dens_prev, d_velocity2, d_max_density);
     checkCudaCall(cudaGetLastError());
 }
 
@@ -95,8 +101,11 @@ static int allocate_data ( void )
 	checkCudaCall(cudaMalloc(&v_prev, array_size));
 	checkCudaCall(cudaMalloc(&dens, array_size));
 	checkCudaCall(cudaMalloc(&dens_prev, array_size));
+	checkCudaCall(cudaMalloc(&d_velocity2, array_size));
+	checkCudaCall(cudaMalloc(&d_max_density, array_size));
+	
 
-	if ( !u || !v || !u_prev || !v_prev || !dens || !dens_prev ) {
+	if ( !u || !v || !u_prev || !v_prev || !dens || !dens_prev || !d_velocity2 || !d_max_density ) {
 		fprintf ( stderr, "cannot allocate data\n" );
 		return ( 0 );
 	}
@@ -143,20 +152,17 @@ static void react(float* d, float* u, float* v) {
     dim3 block(128);
     dim3 grid((size + block.x - 1) / block.x);
 
-    float* d_velocity2;
-    checkCudaCall(cudaMalloc(&d_velocity2, size * sizeof(float)));
-
     compute_velocity_squared<<<grid, block>>>(size, u, v, d_velocity2);
     checkCudaCall(cudaGetLastError());
+
 
     void* temp_storage = nullptr;
     size_t temp_storage_bytes = 0;
     checkCudaCall(cub::DeviceReduce::Max(nullptr, temp_storage_bytes, d_velocity2, d_velocity2, size));
     checkCudaCall(cudaMalloc(&temp_storage, temp_storage_bytes));
     checkCudaCall(cub::DeviceReduce::Max(temp_storage, temp_storage_bytes, d_velocity2, d_velocity2, size));
+    
 
-    float* d_max_density;
-    checkCudaCall(cudaMalloc(&d_max_density, sizeof(float)));
     void* temp_storage2 = nullptr;
     size_t temp_storage_bytes2 = 0;
     checkCudaCall(cub::DeviceReduce::Max(nullptr, temp_storage_bytes2, d, d_max_density, size));
@@ -170,10 +176,10 @@ static void react(float* d, float* u, float* v) {
     inject_center_kernel<<<1, 1>>>(u, v, d, d_velocity2, d_max_density, force, source, center);
     checkCudaCall(cudaGetLastError());
 
-    cudaFree(d_velocity2);
-    cudaFree(d_max_density);
-    cudaFree(temp_storage);
-    cudaFree(temp_storage2);
+	if (temp_storage) checkCudaCall(cudaFree(temp_storage));
+
+	if (temp_storage2) checkCudaCall(cudaFree(temp_storage2));
+
 }
 
 
@@ -257,7 +263,9 @@ int main ( int argc, char ** argv )
 	if ( !allocate_data () ) exit ( 1 );
 	clear_data ();
 	for (i=0; i<2048; i++)
+	{
 		one_step ();
+	}
 	free_data ();
 
 	exit ( 0 );
