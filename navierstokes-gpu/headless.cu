@@ -92,19 +92,19 @@ static int allocate_data ( void )
 	
 	size_t array_size = size*sizeof(float);
 	
-	checkCudaCall(cudaMallocManaged(&u, array_size));
-	checkCudaCall(cudaMallocManaged(&v, array_size));
-	checkCudaCall(cudaMallocManaged(&u_prev, array_size));
-	checkCudaCall(cudaMallocManaged(&v_prev, array_size));
-	checkCudaCall(cudaMallocManaged(&dens, array_size));
-	checkCudaCall(cudaMallocManaged(&dens_prev, array_size));
+	checkCudaCall(cudaMalloc(&u, array_size));
+	checkCudaCall(cudaMalloc(&v, array_size));
+	checkCudaCall(cudaMalloc(&u_prev, array_size));
+	checkCudaCall(cudaMalloc(&v_prev, array_size));
+	checkCudaCall(cudaMalloc(&dens, array_size));
+	checkCudaCall(cudaMalloc(&dens_prev, array_size));
 	
-	cudaMemPrefetchAsync(u,         size*sizeof(float), 0);
-	cudaMemPrefetchAsync(v,         size*sizeof(float), 0);
-	cudaMemPrefetchAsync(u_prev,    size*sizeof(float), 0);
-	cudaMemPrefetchAsync(v_prev,    size*sizeof(float), 0);
-	cudaMemPrefetchAsync(dens,      size*sizeof(float), 0);
-	cudaMemPrefetchAsync(dens_prev, size*sizeof(float), 0);
+	//cudaMemPrefetchAsync(u,         size*sizeof(float), 0);
+	//cudaMemPrefetchAsync(v,         size*sizeof(float), 0);
+	//cudaMemPrefetchAsync(u_prev,    size*sizeof(float), 0);
+	//cudaMemPrefetchAsync(v_prev,    size*sizeof(float), 0);
+	//cudaMemPrefetchAsync(dens,      size*sizeof(float), 0);
+	//cudaMemPrefetchAsync(dens_prev, size*sizeof(float), 0);
 
 	if ( !u || !v || !u_prev || !v_prev || !dens || !dens_prev ) {
 		fprintf ( stderr, "cannot allocate data\n" );
