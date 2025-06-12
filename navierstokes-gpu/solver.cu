@@ -77,9 +77,9 @@ __global__ static void lin_solve_rb_step_kernell(grid_color color,
                               unsigned int n,
                               float a,
                               float ic,
-                              const float * restrict same0,
-                              const float * restrict neigh,
-                              float * restrict same)
+                              const float * ____restrict____ same0,
+                              const float * __restrict__ neigh,
+                              float * __restrict__ same)
 {
     uint x = blockIdx.x * blockDim.x + threadIdx.x + start;
     uint y = blockIdx.y * blockDim.y + threadIdx.y + 1;
@@ -97,8 +97,8 @@ __global__ static void lin_solve_rb_step_kernell(grid_color color,
 }
 
 static void lin_solve(unsigned int n, boundary b,
-                      float * restrict x,
-                      const float * restrict x0,
+                      float * __restrict__ x,
+                      const float * __restrict__ x0,
                       float a, float c)
 {
     unsigned int color_size = (n + 2) * ((n + 2) / 2);
