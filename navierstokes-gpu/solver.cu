@@ -75,47 +75,47 @@ static void set_bnd(unsigned int n, boundary b, float* x)
 
 __global__ static void lin_solve_rb_step_kernell(grid_color color,
                               unsigned int n,
+                              unsigned int width,
                               float a,
-                              float ic,
-                              const float * __restrict__ same0,
-                              const float * __restrict__ neigh,
-                              float * __restrict__ same)
+                              float c,
+                              const float* __restrict__ same0,
+                              const float* __restrict__ neigh,
+                              float* __restrict__ same)
 {
     uint x = blockIdx.x * blockDim.x + threadIdx.x;
     uint y = blockIdx.y * blockDim.y + threadIdx.y + 1;
 
-    unsigned int width = (n + 2) / 2;
-    unsigned int start = (color == RED && (y % 2) || (color == BLACK && ((y+1) % 2)));
-
-    if (y <= n && x < width) {
-            int index = idx(x, y, width);
-            same[index] = (same0[index] + a * (neigh[index - width] +
-                                               neigh[index - start] +
-                                               neigh[index - start + 1] +
-                                               neigh[index + width])) / ic;
+    if ((y <= n) && (x < n/2)){
+        int parity = ((y + 1 + (color == BLACK)) % 2);
+        int index = idx(x + parity, y, width);
+        int shift = 1 - 2 * parity;
+        same[index] = (same0[index] + a * (neigh[index - width] 
+                                        + neigh[index] 
+                                        + neigh[index + shift] 
+                                        + neigh[index + width])) / c;
     }
 }
 
 static void lin_solve(unsigned int n, boundary b,
-                      float * __restrict__ x,
-                      const float * __restrict__ x0,
+                      float* __restrict__ x,
+                      const float* __restrict__ x0,
                       float a, float c)
-{
+{   
     unsigned int color_size = (n + 2) * ((n + 2) / 2);
-    const float * red0 = x0;
-    const float * blk0 = x0 + color_size;
-    float * red = x;
-    float * blk = x + color_size;
-    float ic = 1/c;
+    const float* red0 = x0;
+    const float* blk0 = x0 + color_size;
+    float* red = x;
+    float* blk = x + color_size;
+    unsigned int width = (n + 2) / 2;
 
     dim3 block(16, 8);
     dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
 
     for (unsigned int k = 0; k < 20; ++k) {
-        lin_solve_rb_step_kernell<<<grid, block>>>(RED, n, a, ic, red0, blk, red);
+        lin_solve_rb_step_kernell<<<grid, block>>>(RED, n, width, a, c, red0, blk, red);
         checkCudaCall(cudaGetLastError());
 
-        lin_solve_rb_step_kernell<<<grid, block>>>(BLACK, n, a, ic, blk0, red, blk);
+        lin_solve_rb_step_kernell<<<grid, block>>>(BLACK, n, width, a, c, blk0, red, blk);
         checkCudaCall(cudaGetLastError());
         checkCudaCall(cudaDeviceSynchronize());
         set_bnd(n, b, x);
