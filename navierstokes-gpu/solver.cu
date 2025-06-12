@@ -128,39 +128,49 @@ static void diffuse(unsigned int n, boundary b, float * x, const float * x0, flo
     lin_solve(n, b, x, x0, a, 1 + 4 * a);
 }
 
-static void advect(unsigned int n, boundary b, float * d, const float * d0, const float * u, const float * v, float dt)
-{
+__global__ static void advect_kernell(unsigned int n, boundary b, float * d, const float * d0, const float * u, const float * v, float dt)
+{ 
     int i0, i1, j0, j1;
     float x, y, s0, t0, s1, t1;
-
     float dt0 = dt * n;
-    for (unsigned int i = 1; i <= n; i++) {
-        for (unsigned int j = 1; j <= n; j++) {
-            x = i - dt0 * u[IX(i, j)];
-            y = j - dt0 * v[IX(i, j)];
-            if (x < 0.5f) {
-                x = 0.5f;
-            } else if (x > n + 0.5f) {
-                x = n + 0.5f;
-            }
-            i0 = (int) x;
-            i1 = i0 + 1;
-            if (y < 0.5f) {
-                y = 0.5f;
-            } else if (y > n + 0.5f) {
-                y = n + 0.5f;
-            }
-            j0 = (int) y;
-            j1 = j0 + 1;
-            s1 = x - i0;
-            s0 = 1 - s1;
-            t1 = y - j0;
-            t0 = 1 - t1;
-            d[IX(i, j)] = s0 * (t0 * d0[IX(i0, j0)] + t1 * d0[IX(i0, j1)]) +
-                          s1 * (t0 * d0[IX(i1, j0)] + t1 * d0[IX(i1, j1)]);
+
+    unsigned int j = blockIdx.y * blockDim.y + threadIdx.y + 1;
+    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x + 1;
+
+    if (i <= n/2 && j <= n){
+        x = i - dt0 * u[IX(i, j)];
+        y = j - dt0 * v[IX(i, j)];
+        if (x < 0.5f) {
+            x = 0.5f;
+        } else if (x > n + 0.5f) {
+            x = n + 0.5f;
         }
+        i0 = (int) x;
+        i1 = i0 + 1;
+        if (y < 0.5f) {
+            y = 0.5f;
+        } else if (y > n + 0.5f) {
+            y = n + 0.5f;
+        }
+        j0 = (int) y;
+        j1 = j0 + 1;
+        s1 = x - i0;
+        s0 = 1 - s1;
+        t1 = y - j0;
+        t0 = 1 - t1;
+        d[IX(i, j)] = s0 * (t0 * d0[IX(i0, j0)] + t1 * d0[IX(i0, j1)]) +
+                        s1 * (t0 * d0[IX(i1, j0)] + t1 * d0[IX(i1, j1)]);
     }
     set_bnd(n, b, d);
+}
+
+static void advect(unsigned int n, boundary b, float * d, const float * d0, const float * u, const float * v, float dt)
+{
+    dim3 block(16, 8);
+    dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
+    advect_kernell<<<grid, block>>>(n, b, d, d0, u, v, dt);
+    checkCudaCall(cudaGetLastError());
+    checkCudaCall(cudaDeviceSynchronize());
 }
 
 static void project(unsigned int n, float *u, float *v, float *p, float *div)
