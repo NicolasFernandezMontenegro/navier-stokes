@@ -89,6 +89,7 @@ static void clear_data ( void )
 
     clear_data_kernell<<<grid, block>>>(size, u, v, u_prev, v_prev, dens, dens_prev);
     checkCudaCall(cudaGetLastError());
+	checkCudaCall(cudaDeviceSynchronize());
 
 }
 
@@ -129,6 +130,7 @@ __global__ void clear_arrays_kernel(int size, float* u, float* v, float* d) {
         v[i] = 0.0f;
         d[i] = 0.0f;
     }
+	checkCudaCall(cudaDeviceSynchronize());
 }
 
 __global__ void inject_center_kernel(float* u, float* v, float* d,
@@ -154,7 +156,6 @@ static void react(float* d, float* u, float* v) {
 
     float* d_velocity2;
     checkCudaCall(cudaMalloc(&d_velocity2, size * sizeof(float)));
-
 
     compute_velocity_squared<<<grid, block>>>(size, u, v, d_velocity2);
     checkCudaCall(cudaGetLastError());
