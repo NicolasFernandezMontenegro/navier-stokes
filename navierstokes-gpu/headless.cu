@@ -24,6 +24,7 @@
 
 #include "cuda.h"
 #include "helper_cuda.h"
+#include "cub/cub.cuh"
 
 
 /* macros */
