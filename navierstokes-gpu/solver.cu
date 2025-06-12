@@ -90,8 +90,8 @@ __global__ static void lin_solve_rb_step_kernell(grid_color color,
     if (y <= n && x < width) {
             int index = idx(x, y, width);
             same[index] = (same0[index] + a * (neigh[index - width] +
-                                               neigh[index] +
-                                               neigh[index + shift] +
+                                               neigh[index - start] +
+                                               neigh[index - start + 1] +
                                                neigh[index + width])) / ic;
     }
 }
