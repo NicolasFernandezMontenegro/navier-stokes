@@ -92,7 +92,7 @@ __global__ static void lin_solve_rb_step_kernell(grid_color color,
             same[index] = (same0[index] + a * (neigh[index - width] +
                                                neigh[index] +
                                                neigh[index + shift] +
-                                               neigh[index + width])) / c;
+                                               neigh[index + width])) / ic;
     }
 }
 
