@@ -84,7 +84,7 @@ __global__ static void clear_data_kernell ( int size,
 static void clear_data ( void )
 {
 	int size=(N+2)*(N+2);
-	dim3 block(128);
+	dim3 block(256);
     dim3 grid(div_ceil(size, block.x));
 
     clear_data_kernell<<<grid, block>>>(size, u, v, u_prev, v_prev, dens, dens_prev);
@@ -148,7 +148,7 @@ __global__ void inject_center_kernel(float* u, float* v, float* d,
 
 static void react(float* d, float* u, float* v) {
     const int size = (N + 2) * (N + 2);
-    dim3 block(128);
+    dim3 block(256);
     dim3 grid((size + block.x - 1) / block.x);
 
     float* d_velocity2;

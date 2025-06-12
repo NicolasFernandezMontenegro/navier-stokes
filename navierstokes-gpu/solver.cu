@@ -33,7 +33,7 @@ __global__ static void add_source_kernell(unsigned int n, float* x, const float*
 static void add_source(unsigned int n, float* x, const float* s, float dt)
 {
     unsigned int size = (n + 2) * (n + 2);
-    dim3 block(128);
+    dim3 block(256);
     dim3 grid(div_ceil(size, block.x));
 
     add_source_kernell<<<grid, block>>>(n, x, s, dt);
@@ -60,7 +60,7 @@ __global__ static void set_bnd_kernell(unsigned int n, boundary b, float* x)
 
 static void set_bnd(unsigned int n, boundary b, float* x)
 {
-    dim3 block(128);
+    dim3 block(256);
     dim3 grid(div_ceil(n-2, block.x));
 
     set_bnd_kernell<<<grid, block>>>(n, b, x);
@@ -102,7 +102,7 @@ static void lin_solve(unsigned int n, boundary b,
     float* blk = x + color_size;
     unsigned int width = (n + 2) / 2;
 
-    dim3 block(16, 8);
+    dim3 block(16, 16);
     dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
 
     for (unsigned int k = 0; k < 20; ++k) {
@@ -179,7 +179,7 @@ static void advect(unsigned int n, boundary b,
         const float* __restrict__ v_Red = v;
         const float* __restrict__ v_Blk = v + color_size;
 
-        dim3 block(16, 8);
+        dim3 block(16, 16);
         dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
 
         advect_rb_step_kernell<<<grid, block>>>(RED, n, d_Red, d0, u_Red, v_Red, dt);
@@ -247,7 +247,7 @@ __global__ static void project_rb_step_2_kernell(grid_color color,
         float* red_div = div;
         float* blk_div = div + color_size;
 
-        dim3 block(16, 8);
+        dim3 block(16, 16);
         dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
 
         project_rb_step_1_kernell<<<grid, block>>>(RED, n, blk_u, blk_v, red_div, red_p);
