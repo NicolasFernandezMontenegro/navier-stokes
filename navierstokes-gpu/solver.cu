@@ -114,9 +114,9 @@ static void lin_solve(unsigned int n, boundary b,
 
         lin_solve_rb_step_kernell<<<grid, block>>>(BLACK, n, width, a, c, blk0, red, blk);
         checkCudaCall(cudaGetLastError());
-        checkCudaCall(cudaDeviceSynchronize());
         set_bnd(n, b, x);
     }
+    checkCudaCall(cudaDeviceSynchronize());
 }
 
 static void diffuse(unsigned int n, boundary b, float* x, const float* x0, float diff, float dt)
