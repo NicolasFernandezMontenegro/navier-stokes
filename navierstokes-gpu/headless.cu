@@ -89,7 +89,6 @@ static void clear_data ( void )
 
     clear_data_kernell<<<grid, block>>>(size, u, v, u_prev, v_prev, dens, dens_prev);
     checkCudaCall(cudaGetLastError());
-    checkCudaCall(cudaDeviceSynchronize());
 
 }
 
@@ -157,7 +156,6 @@ static void react(float* d, float* u, float* v) {
     compute_velocity_squared<<<grid, block>>>(size, u, v, d_velocity2);
     checkCudaCall(cudaGetLastError());
 
-
     void* temp_storage = nullptr;
     size_t temp_storage_bytes = 0;
     checkCudaCall(cub::DeviceReduce::Max(nullptr, temp_storage_bytes, d_velocity2, d_velocity2, size));
@@ -208,8 +206,6 @@ static void one_step ( void )
 	start_t = wtime();
 	dens_step ( N, dens, dens_prev, u, v, diff, dt );
 	dens_ns_p_cell += 1.0e9 * (wtime()-start_t)/(N*N);
-
-	cudaDeviceSynchronize();
 
 	if (1.0<wtime()-one_second) { /* at least 1s between stats */
 		printf("%lf, %lf, %lf, %lf: ns per cell total, react, vel_step, dens_step\n",
