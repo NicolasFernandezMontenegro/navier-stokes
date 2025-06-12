@@ -375,7 +375,7 @@ static void idle_func ( void )
 	react ( dens_prev, u_prev, v_prev );
 	react_ns_p_cell += 1.0e9 * (wtime()-start_t)/(N*N);
 
-	checkCudaCall(cudaDeviceSynchronize());
+	//checkCudaCall(cudaDeviceSynchronize());
 
 	start_t = wtime();
 	vel_step ( N, u, v, u_prev, v_prev, visc, dt );
