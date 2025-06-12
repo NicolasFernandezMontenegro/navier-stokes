@@ -156,7 +156,6 @@ static void react(float* d, float* u, float* v) {
 
     compute_velocity_squared<<<grid, block>>>(size, u, v, d_velocity2);
     checkCudaCall(cudaGetLastError());
-	checkCudaCall(cudaDeviceSynchronize());
 
 
     void* temp_storage = nullptr;
@@ -181,7 +180,6 @@ static void react(float* d, float* u, float* v) {
     int center = IX(N / 2, N / 2);
     inject_center_kernel<<<1, 1>>>(u, v, d, d_velocity2, d_max_density, force, source, center);
     checkCudaCall(cudaGetLastError());
-	checkCudaCall(cudaDeviceSynchronize());
 
     cudaFree(d_velocity2);
     cudaFree(d_max_density);
