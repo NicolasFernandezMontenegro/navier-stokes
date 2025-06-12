@@ -37,9 +37,7 @@ static void add_source(unsigned int n, float* x, const float* s, float dt)
     dim3 grid(div_ceil(size, block.x));
 
     add_source_kernell<<<grid, block>>>(n, x, s, dt);
-    checkCudaCall(cudaGetLastError());
-    checkCudaCall(cudaDeviceSynchronize());    
-
+    checkCudaCall(cudaGetLastError()); 
 }
 
 __global__ static void set_bnd_kernell(unsigned int n, boundary b, float* x)
@@ -67,7 +65,6 @@ static void set_bnd(unsigned int n, boundary b, float* x)
 
     set_bnd_kernell<<<grid, block>>>(n, b, x);
     checkCudaCall(cudaGetLastError());
-    checkCudaCall(cudaDeviceSynchronize());
 }
 
 __global__ static void lin_solve_rb_step_kernell(grid_color color,
@@ -116,7 +113,6 @@ static void lin_solve(unsigned int n, boundary b,
         checkCudaCall(cudaGetLastError());
         set_bnd(n, b, x);
     }
-    checkCudaCall(cudaDeviceSynchronize());
 }
 
 static void diffuse(unsigned int n, boundary b, float* x, const float* x0, float diff, float dt)
@@ -190,7 +186,6 @@ static void advect(unsigned int n, boundary b,
         checkCudaCall(cudaGetLastError());
         advect_rb_step_kernell<<<grid, block>>>(BLACK, n, d_Blk, d0, u_Blk, v_Blk, dt);
         checkCudaCall(cudaGetLastError());
-        checkCudaCall(cudaDeviceSynchronize());
         
         set_bnd(n, b, d);
     }
@@ -277,6 +272,8 @@ __global__ static void project_rb_step_2_kernell(grid_color color,
         diffuse(n, NONE, x, x0, diff, dt);
         SWAP(x0, x);
         advect(n, NONE, x, x0, u, v, dt);
+
+        checkCudaCall(cudaDeviceSynchronize());   
     }
 
     void vel_step(unsigned int n, float* u, float* v, float* u0, float* v0, float visc, float dt)
@@ -293,4 +290,6 @@ __global__ static void project_rb_step_2_kernell(grid_color color,
         advect(n, VERTICAL, u, u0, u0, v0, dt);
         advect(n, HORIZONTAL, v, v0, u0, v0, dt);
         project(n, u, v, u0, v0);
+
+        checkCudaCall(cudaDeviceSynchronize());   
     }
