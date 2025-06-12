@@ -70,44 +70,27 @@ static void set_bnd(unsigned int n, boundary b, float* x)
     checkCudaCall(cudaDeviceSynchronize());
 }
 
-__global__ static void lin_solve_rb_step_kernell( unsigned int n,
-                                                    unsigned int width,
-                                                    float a,
-                                                    float c,
-                                                    const float* __restrict__ red0,
-                                                    const float* __restrict__ blk0,
-                                                    float* __restrict__ red,
-                                                    float* __restrict__ blk)
+__global__ static void lin_solve_rb_step_kernell(grid_color color,
+                              unsigned int n,
+                              unsigned int width,
+                              float a,
+                              float c,
+                              const float* __restrict__ same0,
+                              const float* __restrict__ neigh,
+                              float* __restrict__ same)
 {
     uint x = blockIdx.x * blockDim.x + threadIdx.x;
     uint y = blockIdx.y * blockDim.y + threadIdx.y + 1;
 
     if ((y <= n) && (x < n/2)){
-        // RED pass
-        int parity_r = ((y + 1 + (0)) % 2);
-        int index_r = idx(x + parity_r, y, width);
-        int shift_r = 1 - 2 * parity_r;
-
-        red[index_r] = (red0[index_r] + a * (blk[index_r - width] 
-                                        + blk[index_r] 
-                                        + blk[index_r + shift_r] 
-                                        + blk[index_r + width])) / c;
-
-        __syncthreads(); // ensure red is updated before black uses it
-
-        // Black pass
-        int parity_b = ((y + 1 + (1)) % 2);
-        int index_b = idx(x + parity_b, y, width);
-        int shift_b = 1 - 2 * parity_b;
-
-        blk[index_b] = (blk0[index_b] + a * (red[index_b - width] 
-                                        + red[index_b] 
-                                        + red[index_b + shift_b] 
-                                        + red[index_b + width])) / c;
-
+        int parity = ((y + 1 + (color == BLACK)) % 2);
+        int index = idx(x + parity, y, width);
+        int shift = 1 - 2 * parity;
+        same[index] = (same0[index] + a * (neigh[index - width] 
+                                        + neigh[index] 
+                                        + neigh[index + shift] 
+                                        + neigh[index + width])) / c;
     }
-
-
 }
 
 static void lin_solve(unsigned int n, boundary b,
@@ -126,7 +109,10 @@ static void lin_solve(unsigned int n, boundary b,
     dim3 grid(div_ceil(n-2, block.x), div_ceil(n-2, block.y));
 
     for (unsigned int k = 0; k < 20; ++k) {
-        lin_solve_rb_step_kernell<<<grid, block>>>(n, width, a, c, red0, blk0, red, blk);
+        lin_solve_rb_step_kernell<<<grid, block>>>(RED, n, width, a, c, red0, blk, red);
+        checkCudaCall(cudaGetLastError());
+
+        lin_solve_rb_step_kernell<<<grid, block>>>(BLACK, n, width, a, c, blk0, red, blk);
         checkCudaCall(cudaGetLastError());
         checkCudaCall(cudaDeviceSynchronize());
         set_bnd(n, b, x);
