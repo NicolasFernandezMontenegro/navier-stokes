@@ -129,26 +129,16 @@ __global__ void compute_velocity_squared(int size, const float* u, const float* 
         velocity2[i] = ui * ui + vi * vi;
     }
 }
-
-__global__ void clear_arrays_kernel(int size, float* u, float* v, float* d) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < size) {
-        u[i] = 0.0f;
-        v[i] = 0.0f;
-        d[i] = 0.0f;
-    }
-}
-
 __global__ void inject_center_kernel(float* u, float* v, float* d,
-                                     float max_velocity2, float max_density,
+                                     float* max_velocity2, float* max_density,
                                      float force, float source, int center) {
     if (threadIdx.x == 0 && blockIdx.x == 0) {
-        if (max_velocity2 < 0.0000005f) {
+        if (*max_velocity2 < 0.0000005f) {
             float val = force * 10.0f;
             u[center] = val;
             v[center] = val;
         }
-        if (max_density < 1.0f) {
+        if (*max_density < 1.0f) {
             float val = source * 10.0f;
             d[center] = val;
         }
@@ -166,6 +156,8 @@ static void react(float* d, float* u, float* v) {
 
     compute_velocity_squared<<<grid, block>>>(size, u, v, d_velocity2);
     checkCudaCall(cudaGetLastError());
+	checkCudaCall(cudaDeviceSynchronize());
+
 
     void* temp_storage = nullptr;
     size_t temp_storage_bytes = 0;
@@ -181,23 +173,22 @@ static void react(float* d, float* u, float* v) {
     checkCudaCall(cudaMalloc(&temp_storage2, temp_storage_bytes2));
     checkCudaCall(cub::DeviceReduce::Max(temp_storage2, temp_storage_bytes2, d, d_max_density, size));
 
-    float max_velocity2;
-    float max_density;
-    checkCudaCall(cudaMemcpy(&max_velocity2, d_velocity2, sizeof(float), cudaMemcpyDeviceToHost));
-    checkCudaCall(cudaMemcpy(&max_density, d_max_density, sizeof(float), cudaMemcpyDeviceToHost));
-	
-    clear_arrays_kernel<<<grid, block>>>(size, u, v, d);
-    checkCudaCall(cudaGetLastError());
+    checkCudaCall(cudaMemset(d, 0, size * sizeof(float)));
+    checkCudaCall(cudaMemset(u, 0, size * sizeof(float)));
+    checkCudaCall(cudaMemset(v, 0, size * sizeof(float)));
+
 
     int center = IX(N / 2, N / 2);
-    inject_center_kernel<<<1, 1>>>(u, v, d, max_velocity2, max_density, force, source, center);
+    inject_center_kernel<<<1, 1>>>(u, v, d, d_velocity2, d_max_density, force, source, center);
     checkCudaCall(cudaGetLastError());
+	checkCudaCall(cudaDeviceSynchronize());
 
     cudaFree(d_velocity2);
     cudaFree(d_max_density);
     cudaFree(temp_storage);
     cudaFree(temp_storage2);
 }
+
 
 static void one_step ( void )
 {
