@@ -88,10 +88,10 @@ __global__ static void lin_solve_rb_step_kernell( unsigned int n,
         int index_r = idx(x + parity, y, width);
         int shift_r = 1 - 2 * parity;
 
-        red[index] = (red0[index] + a * (blk[index - width] 
-                                        + blk[index] 
-                                        + blk[index + shift] 
-                                        + blk[index + width])) / c;
+        red[index_r] = (red0[index_r] + a * (blk[index_r - width] 
+                                        + blk[index_r] 
+                                        + blk[index_r + shift_r] 
+                                        + blk[index_r + width])) / c;
 
         __syncthreads(); // ensure red is updated before black uses it
 
@@ -100,10 +100,10 @@ __global__ static void lin_solve_rb_step_kernell( unsigned int n,
         int index_b = idx(x + parity, y, width);
         int shift_b = 1 - 2 * parity;
 
-        blk[index] = (blk0[index] + a * (red[index - width] 
-                                        + red[index] 
-                                        + red[index + shift] 
-                                        + red[index + width])) / c;
+        blk[index_b] = (blk0[index_b] + a * (red[index_b - width] 
+                                        + red[index_b] 
+                                        + red[index_b + shift_b] 
+                                        + red[index_b + width])) / c;
 
     }
 
