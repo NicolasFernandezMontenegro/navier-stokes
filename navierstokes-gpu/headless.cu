@@ -40,14 +40,6 @@ static float force, source;
 static float * u, * v, * u_prev, * v_prev;
 static float * dens, * dens_prev;
 
-struct ReactBuffers {
-    float*  d_velocity2;
-    float*  d_max_density;
-    void*   temp_storage;     // Un único buffer temporal
-    size_t  temp_bytes;       // Tamaño en bytes de temp_storage
-};
-
-
 /*
   ----------------------------------------------------------------------
    free/clear/allocate simulation data
