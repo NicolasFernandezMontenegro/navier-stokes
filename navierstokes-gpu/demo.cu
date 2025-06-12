@@ -130,7 +130,7 @@ static int allocate_data ( void )
   ----------------------------------------------------------------------
 */
 
-static void pre_display ( void )	checkCudaCall(cudaDeviceSynchronize());
+static void pre_display ( void )
 {
 	glViewport ( 0, 0, win_x, win_y );
 	glMatrixMode ( GL_PROJECTION );
