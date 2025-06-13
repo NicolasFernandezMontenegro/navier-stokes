@@ -1,0 +1,91 @@
+Gráfico 1/2: 
+N = 512, variamos hilos.  (ns per cell)
+
+hilos = 4: 34.682522,  
+hilos = 6: 31.087364, 
+hilos = 8: 28.778081,  
+hilos = 10: 29.500097, 
+hilos = 12: 32.144951,  
+hilos = 14: 34.029573,  
+hilos = 16: 36.087909, 
+hilos = 32: 48.527771, 
+
+N = 1024
+
+hilos = 4:21.794869, 
+hilos = 6: 19.037611, 
+hilos = 8: 18.412651, 
+hilos = 10: 17.339567, 
+hilos = 12: 18.232957, 
+hilos = 14: 19.373651, 
+hilos = 16: 20.110478, 
+hilos = 32: 26.125559, 
+
+
+N = 2048
+
+hilos = 4:17.792615,
+hilos = 6: 14.765516, 
+hilos = 8: 13.231078, 
+hilos = 10: 11.969550, 
+hilos = 12: 11.725747, 
+hilos = 14: 11.821442, 
+hilos = 16: 12.157258, 
+hilos = 32: 15.410038,
+
+
+N = 4000
+
+hilos = 4:13.758901, 
+hilos = 6: 10.610260, 
+hilos = 8: 9.431045, 
+hilos = 10: 8.514926, 
+hilos = 12: 8.123532,
+hilos = 14: 7.704640, 
+hilos = 16: 8.001134, 
+hilos = 32: 8.966508, 
+
+
+N = 6000
+
+hilos = 4:16.158932, 
+hilos = 6: 11.730148,
+hilos = 8: 9.332546, 
+hilos = 10: 9.101737, 
+hilos = 12: 8.170214, 
+hilos = 14: 7.608271, 
+hilos = 16: 8.301828,
+hilos = 32: 26.332137, 
+
+
+N = 8000
+
+hilos = 4: 17.182656, 
+hilos = 6: 13.272891, 
+hilos = 8: 11.309594,
+hilos = 10: 10.978851, 
+hilos = 12: 10.232827, 
+hilos = 14: 10.071900, 
+hilos = 16:  10.540500,
+hilos = 32: 27.373422, 
+           
+
+
+
+=> Mejor versión N = 4000, 14 hilos
+
+Grafico 2: 
+          Los N de 14 hilos
+
+Grafico 3: 
+        N's de lab anterior vs este lab con 14 hilos 
+
+lab anterior:
+N = 512: 39.929157, 0.331738, 29.809883, 9.787537: ns per cell total, react, vel_step, dens_step
+N = 1024: 39.571769, 0.423543, 29.410676, 9.737550: ns per cell total, react, vel_step, dens_step
+N = 2048:41.543056, 0.530899, 30.950484, 10.061674: ns per cell total, react, vel_step, dens_step
+N = 4000: 47.917843, 0.660121, 35.861656, 11.396065: ns per cell total, react, vel_step, dens_step
+N = 6000: 50.351189, 0.673056, 38.023776, 11.654357: ns per cell total, react, vel_step, dens_step
+N = 8000: 53.296685, 0.683811, 40.162876, 12.449998: ns per cell total, react, vel_step, dens_step
+
+
