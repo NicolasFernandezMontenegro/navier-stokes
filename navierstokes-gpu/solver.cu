@@ -110,8 +110,7 @@ static void lin_solve(unsigned int n, boundary b,
         checkCudaCall(cudaGetLastError());
         lin_solve_rb_step_kernell<<<grid, block>>>(BLACK, n, width, a, c, blk0, red, blk);
         checkCudaCall(cudaGetLastError());
-
-
+        
         set_bnd(n, b, x);
     }
 }

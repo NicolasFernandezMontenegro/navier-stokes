@@ -27,6 +27,6 @@ Celdas/ms  = 51614
 N = 512
 Celdas/ms = 29388
 N = 256
-Celdas/ms = 124199
+Celdas/ms = 29388
 N = 120
-Celdas/ms 31014	
+Celdas/ms 29388	
