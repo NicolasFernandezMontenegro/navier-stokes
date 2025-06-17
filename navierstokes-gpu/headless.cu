@@ -122,14 +122,6 @@ __global__ void compute_velocity_squared(int size, const float* u, const float* 
     }
 }
 
-__global__ void clear_arrays_kernel(int size, float* u, float* v, float* d) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i < size) {
-        u[i] = 0.0f;
-        v[i] = 0.0f;
-        d[i] = 0.0f;
-    }
-}
 
 __global__ void inject_center_kernel(float* u, float* v, float* d,
                                      float* max_velocity2, float* max_density,
@@ -169,8 +161,9 @@ static void react(float* d, float* u, float* v) {
     checkCudaCall(cudaMalloc(&temp_storage2, temp_storage_bytes2));
     checkCudaCall(cub::DeviceReduce::Max(temp_storage2, temp_storage_bytes2, d, d_max_density, size));
 
-    clear_arrays_kernel<<<grid, block>>>(size, u, v, d);
-    checkCudaCall(cudaGetLastError());
+    checkCudaCall(cudaMemset(u, 0, size * sizeof(float)));
+	checkCudaCall(cudaMemset(v, 0, size * sizeof(float)));
+	checkCudaCall(cudaMemset(d, 0, size * sizeof(float)));
 
     int center = IX(N / 2, N / 2);
     inject_center_kernel<<<1, 1>>>(u, v, d, d_velocity2, d_max_density, force, source, center);
